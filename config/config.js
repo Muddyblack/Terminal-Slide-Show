@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
-import { frontendConfig } from './frontend.config.js';
+import { frontendConfig } from './frontend.config';
 
 // Get current file's directory
 const __dirname = dirname(fileURLToPath(import.meta.url));

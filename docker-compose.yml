@@ -22,7 +22,7 @@ services:
     environment:
       - NODE_ENV=production
     volumes:
-      - ./downloads:/app/downloads:rw   # Keep this if you need persistent storage for downloads
+      - ./downloads:/app/downloads:rw   
     networks:
       - app-network
 

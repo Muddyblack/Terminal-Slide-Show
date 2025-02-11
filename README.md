@@ -17,7 +17,6 @@ A modern, full-featured digital signage solution built with React and Node.js th
 - 🌅 Dynamic day/night mode transitions
 - 🌡️ Live weather updates and animations
 - 🚀 NASA Astronomy Picture of the Day integration
-- 💡 Power-saving mode with automatic service management
 - 📊 Health monitoring and automatic recovery
 - 🔒 Secure operation with minimal dependencies
 
