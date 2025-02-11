@@ -1,19 +1,16 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Install build dependencies
-RUN apk add --no-cache python3 make g++ libc6-compat
+# Copy client project files
+COPY client/ ./client/
+COPY server/config ./server/config/
 
-# Copy package files
-COPY package*.json ./
+WORKDIR /app/client
 
-# Clean install with platform-specific flags
+# Clean install with platform-specific flags and Rollup
 RUN npm cache clean --force && \
-    npm install --platform=linux --arch=x64 --no-save
-
-# Copy project files
-COPY . .
+    npm install
 
 # Build the frontend
 RUN npm run build
@@ -22,4 +19,7 @@ RUN npm run build
 ENV VITE_HOST=0.0.0.0
 EXPOSE 5173
 
-CMD ["npm", "run", "dev:frontend"]
+# Use production mode for preview
+ENV NODE_ENV=production
+
+CMD ["npm", "run", "preview"]

@@ -553,7 +553,7 @@ main() {
     local project_dir="$(find_project_dir)"
     local scrip_dir="$(get_script_dir)"
 
-    config_file="${project_dir}/config/config.js"
+    config_file="${project_dir}/server/config/config.js"
     media_dir="${project_dir}/${default_media_path}"
 
     # Export needed variables for child processes

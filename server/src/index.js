@@ -1,14 +1,17 @@
+import { config } from '../config/config.js';
+
+
 import express from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 import fetch from 'node-fetch';
 import { GoogleDriveService } from './services/googleDriveService.js';
 import { SlideshowManager } from './services/slideshowManager.js';
-import { PowerManager } from './services/powerManager.js';
 import { Logger } from './utils/logger.js';
-import { config } from '../../config/config.js';
 import { createServer } from 'http';
 import { webSocketManager } from './services/webSocketManager.js';
+
+
 
 /**
  * Express application instance
@@ -26,9 +29,6 @@ const logger = new Logger('Main');
 // Initialize services
 const googleDriveService = new GoogleDriveService();
 const slideshowManager = new SlideshowManager();
-const powerManager = new PowerManager({
-    inactivityTimeout: config.backendPowerSaving?.timeout || 5 * 60 * 1000 // 5 minutes default
-});
 
 // Make slideshowManager globally accessible
 global.slideshowManager = slideshowManager;
@@ -50,10 +50,6 @@ async function initialize() {
         // Start services
         await googleDriveService.startSync();
 
-        // Initialize power manager
-        powerManager.initialize();
-        powerManager.registerService('googleDrive', googleDriveService);
-        powerManager.registerService('slideshow', slideshowManager);
 
         logger.info('All services initialized successfully');
     } catch (error) {
@@ -63,7 +59,6 @@ async function initialize() {
 }
 
 const handleClientActivity = (req, res, next) => {
-    powerManager.handleClientActivity();
     next();
 };
 
@@ -193,7 +188,7 @@ app.get('/api/server-status', (req, res) => {
 app.get('/api/quotes', async (req, res) => {
     logger.debug('Fetching random quote');
     try {
-        const quotesData = await fs.readFile(path.join(process.cwd(), 'server', 'data', 'quotes.json'), 'utf8');
+        const quotesData = await fs.readFile(path.join(process.cwd(), 'data', 'quotes.json'), 'utf8');
         const quotes = JSON.parse(quotesData).quotes;
         const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
         res.json(randomQuote);
@@ -210,7 +205,7 @@ app.get('/api/quotes', async (req, res) => {
 app.get('/api/facts', async (req, res) => {
     logger.debug('Fetching random fact');
     try {
-        const factsData = await fs.readFile(path.join(process.cwd(), 'server', 'data', 'facts.json'), 'utf8');
+        const factsData = await fs.readFile(path.join(process.cwd(), 'data', 'facts.json'), 'utf8');
         const facts = JSON.parse(factsData);
         const randomFact = facts[Math.floor(Math.random() * facts.length)];
         res.json(randomFact);
@@ -227,7 +222,7 @@ app.get('/api/facts', async (req, res) => {
 app.get('/api/greetings', async (req, res) => {
     logger.debug('Fetching greetings');
     try {
-        const greetingsData = await fs.readFile(path.join(process.cwd(), 'server', 'data', 'greetings.json'), 'utf8');
+        const greetingsData = await fs.readFile(path.join(process.cwd(), 'data', 'greetings.json'), 'utf8');
         const greetings = JSON.parse(greetingsData);
         res.json(greetings);
     } catch (error) {
@@ -341,7 +336,6 @@ initialize().then(() => {
 // Handle shutdown
 process.on('SIGINT', () => {
     logger.info('Shutting down...');
-    powerManager.stop();
     googleDriveService.stop();
     slideshowManager.stop();
     process.exit(0);

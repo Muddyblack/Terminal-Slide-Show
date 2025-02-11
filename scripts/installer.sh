@@ -309,7 +309,7 @@ main() {
     check_sudo
 
     # Load configuration
-    load_config "$project_dir/config/.env"
+    load_config "$project_dir/server/config/.env"
 
     # Select installation mode
     select_mode

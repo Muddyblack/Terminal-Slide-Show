@@ -1,177 +1,63 @@
-.weather-badge {
-  position: absolute;
-  top: 0;
-  right: 0;
-  background: linear-gradient(145deg,
-      rgba(255, 255, 255, 0.2),
-      rgba(255, 255, 255, 0.1));
-  backdrop-filter: blur(15px);
-  padding: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 0 0 0 1.5rem;
-  box-shadow:
-    0 15px 35px rgba(0, 0, 0, 0.1),
-    0 5px 15px rgba(0, 0, 0, 0.05);
-  max-width: min(90vw, 200px);
-  transition: all 0.4s ease;
-  transform-origin: top right;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-
-.temperature-container {
-  position: relative;
-  z-index: 10;
-}
-
-.temperature-text {
-  font-size: clamp(1.25rem, 4vw, 2rem);
-  background: linear-gradient(45deg, #fff, #4ade80);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: 0 4px 15px rgba(74, 222, 128, 0.3);
-  animation: temperature-pulse 3s ease-in-out infinite;
-}
-
-.weather-details {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 0.25rem;
-  z-index: 10;
-  position: relative;
-}
-
-.wind-info {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 0.25rem 0.5rem;
-  border-radius: 1rem;
-  backdrop-filter: blur(10px);
-}
-
-.wind-icon {
-  stroke: #38bdf8;
-  animation: wind-sway 2s ease-in-out infinite;
-}
-
-.wind-direction-arrow {
-  stroke: #f43f5e;
-  transition: transform 0.5s ease;
-}
-
-@keyframes temperature-pulse {
-
-  0%,
-  100% {
-    transform: scale(1);
-  }
-
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-@keyframes wind-sway {
-
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-
-  50% {
-    transform: rotate(5deg);
-  }
-}
-
-@media (max-width: 600px) {
+@layer components {
   .weather-badge {
-    padding: 0.75rem;
-    max-width: 90vw;
+    @apply absolute top-0 right-0 
+           bg-weather-gradient backdrop-blur-xl
+           p-4 border border-white/30 
+           rounded-bl-2xl
+           shadow-lg
+           max-w-[min(90vw,200px)]
+           transition-all duration-300
+           origin-top-right;
+  }
+
+  .temperature-container {
+    @apply relative z-10;
   }
 
   .temperature-text {
-    font-size: clamp(1rem, 5vw, 1.5rem);
+    @apply text-[clamp(1.25rem,4vw,2rem)]
+           bg-gradient-to-r from-white to-green-400
+           bg-clip-text text-transparent
+           drop-shadow-[0_4px_15px_rgba(74,222,128,0.3)]
+           animate-temperature-pulse;
   }
 
   .weather-details {
-    margin-top: 0.25rem;
+    @apply flex flex-col items-center 
+           mt-1 z-10 relative;
   }
 
   .wind-info {
-    padding: 0.25rem 0.5rem;
+    @apply bg-white/10 
+           px-2 py-1 
+           rounded-full 
+           backdrop-blur-md;
+  }
+
+  .wind-icon {
+    @apply text-sky-400
+           animate-wind-sway;
+  }
+
+  .wind-direction-arrow {
+    @apply text-rose-500
+           transition-transform duration-500;
   }
 }
 
-@media (max-width: 1200px) {
-  .weather-badge {
-    padding: 0.9rem;
-    max-width: 80vw;
-  }
-
-  .temperature-text {
-    font-size: clamp(1.1rem, 4.5vw, 1.8rem);
-  }
-
-  .wind-info {
-    padding: 0.3rem 0.6rem;
-  }
+/* Keep SVG-specific animations */
+@keyframes temperature-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 
-@media (max-width: 900px) {
-  .weather-badge {
-    padding: 0.8rem;
-    max-width: 85vw;
-  }
-
-  .temperature-text {
-    font-size: clamp(1rem, 4vw, 1.6rem);
-  }
-
-  .wind-info {
-    padding: 0.3rem 0.6rem;
-  }
+@keyframes wind-sway {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(5deg); }
 }
 
-@media (max-width: 400px) {
-  .weather-badge {
-    padding: 0.6rem;
-    max-width: 95vw;
-  }
-
-  .temperature-text {
-    font-size: clamp(0.9rem, 5.5vw, 1.4rem);
-  }
-
-  .wind-info {
-    padding: 0.2rem 0.4rem;
-  }
-}
-
-@media (min-width: 1600px) {
-  .weather-badge {
-    padding: 1.5rem;
-    max-width: 300px;
-  }
-
-  .temperature-text {
-    font-size: clamp(2rem, 5vw, 3rem);
-  }
-
-  .wind-info {
-    padding: 0.5rem 1rem;
-  }
-}
-
-@media (min-width: 1200px) {
-  .weather-badge {
-    padding: 1.2rem;
-    max-width: 250px;
-  }
-
-  .temperature-text {
-    font-size: clamp(1.5rem, 4.5vw, 2.5rem);
-  }
-
-  .wind-info {
-    padding: 0.4rem 0.8rem;
-  }
-}
+/* Media query adjustments using Tailwind breakpoints in the component itself */

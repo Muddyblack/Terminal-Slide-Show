@@ -1,20 +1,23 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies first
-COPY package*.json ./
-RUN npm install
-
-# Copy entire project
-COPY . .
+# Copy server package files
+COPY server/ ./server/
 
 # Create necessary directories and set permissions
 RUN mkdir -p downloads && chmod -R 777 downloads
 
-# Set host for accessibility
-ENV HOST=0.0.0.0
+# Set working directory to server folder
+WORKDIR /app/server
 
+# Install dependencies
+RUN npm cache clean --force && \
+    npm install
+
+# Runtime configuration
+ENV HOST=0.0.0.0
 EXPOSE 3000
 
-CMD ["node", "server/src/index.js"]
+# Start the server
+CMD ["node", "src/index.js"]

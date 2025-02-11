@@ -8,9 +8,6 @@ services:
       environment:
         - NODE_ENV=production
         - VITE_BACKEND_URL=http://backend:3000
-      volumes:
-        - ./client:/app/client
-        - /app/node_modules
       networks:
         - app-network
   backend:
@@ -22,7 +19,8 @@ services:
     environment:
       - NODE_ENV=production
     volumes:
-      - ./downloads:/app/downloads:rw   # Keep this if you need persistent storage for downloads
+      - ./downloads:/app/downloads:rw
+      - ./server/config:/app/server/config:ro
     networks:
       - app-network
 

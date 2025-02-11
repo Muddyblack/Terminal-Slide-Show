@@ -5,11 +5,11 @@
   "description": "non-GUI slideshow that fetches new files from Google Drive, allowing you to update the slideshow remotely.",
   "type": "module",
   "scripts": {
-    "dev:frontend": "vite client",
-    "dev:backend": "node server/src/index.js",
+    "dev:frontend": "cd client && npm run dev",
+    "dev:backend": "cd server && npm run dev",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "build": "vite build client",
-    "preview": "vite preview"
+    "build": "cd client && npm run build",
+    "preview": "cd client && npm run preview"
   },
   "repository": {
     "type": "git",
@@ -44,30 +44,6 @@
   },
   "homepage": "https://github.com/asta-dhbw/Terminal-Slide-Show#readme",
   "dependencies": {
-    "dotenv": "^16.4.5",
-    "express": "^4.21.1",
-    "framer-motion": "^11.11.10",
-    "fs-extra": "^11.2.0",
-    "googleapis": "^144.0.0",
-    "idb": "^8.0.0",
-    "lucide-react": "^0.454.0",
-    "node-fetch": "^3.3.2",
-    "prop-types": "^15.8.1",
-    "react": "^18.2.0",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.27.0",
-    "react-swipeable": "^7.0.1",
-    "uuid": "^11.0.2",
-    "ws": "^8.18.0"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.3",
-    "autoprefixer": "^10.4.14",
-    "concurrently": "^8.2.2",
-    "vite": "^5.0.0"
-  },
-  "optionalDependencies": {
-    "@esbuild/linux-x64": "^0.24.0",
-    "@rollup/rollup-linux-x64-gnu": "^4.9.5"
+    "concurrently": "^9.1.2"
   }
 }

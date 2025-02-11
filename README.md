@@ -17,7 +17,6 @@ A modern, full-featured digital signage solution built with React and Node.js th
 - 🌅 Dynamic day/night mode transitions
 - 🌡️ Live weather updates and animations
 - 🚀 NASA Astronomy Picture of the Day integration
-- 💡 Power-saving mode with automatic service management
 - 📊 Health monitoring and automatic recovery
 - 🔒 Secure operation with minimal dependencies
 
@@ -66,15 +65,15 @@ terminal-slide-show/
 │   │   ├── utils/        # Utility functions
 │   │   └── styles/       # CSS stylesheets
 ├── server/                # Backend application
+│   ├── config/               # Configuration files
+│   │   ├── config.js        # Main configuration
+│   │   └── frontend.config.js # Frontend-specific config
 │   ├── src/
 │   │   ├── services/     # Core services
 │   │   │   ├── websocket/     # WebSocket server
 │   │   │   └── cache/         # Caching service
 │   │   └── utils/        # Utility functions
 │   └── data/             # Local data (quotes, facts)
-├── config/               # Configuration files
-│   ├── config.js        # Main configuration
-│   └── frontend.config.js # Frontend-specific config
 ├── scripts/             # Shell scripts
 └── downloads/           # Local media storage
 ```
@@ -95,8 +94,8 @@ npm install
 mkdir -p downloads logs cache
 
 # Create configuration files
-cp config/config.example.js config/config.js
-cp config/.env.example config/.env
+cp server/config/config.example.js server/config/config.js
+cp server/config/.env.example server/config/.env
 ```
 
 ### 2. Google Drive Authentication
@@ -125,7 +124,7 @@ You have two options for authenticating with Google Drive:
    - Click "Create Service Account"
    - Grant the role "Drive File Viewer" or necessary permissions
    - Create and download JSON key
-4. Place the downloaded JSON key in `config/service-account.json`
+4. Place the downloaded JSON key in `server/config/service-account.json`
 5. Share your Google Drive folder with the service account email
 6. Configure `config.js`:
    ```javascript

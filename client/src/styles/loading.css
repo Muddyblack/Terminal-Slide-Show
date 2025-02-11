@@ -1,31 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 .loading-overlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.9);
-  background-image: url("/LOGO.png");
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
-  z-index: 50;
+  @apply fixed inset-0 flex flex-col items-center justify-center bg-black/90 bg-[url('/LOGO.png')] bg-cover bg-no-repeat bg-center z-50;
 }
 
 .loading-overlay-background {
-  position: absolute;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.7);
-  z-index: 1;
+  @apply absolute inset-0 bg-black/70 z-[1];
 }
 
 .loading-text {
-  font-size: 1.5rem;
-  font-weight: 300;
-  z-index: 2;
+  @apply text-2xl font-light z-[2];
 }
 
 .loading-overlay>* {
-  z-index: 2;
+  @apply z-[2];
 }

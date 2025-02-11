@@ -1,0 +1,9 @@
+{
+  "watch": ["src/", "config/"],
+  "ext": ".js,.json",
+  "ignore": ["*.test.js", "node_modules/"],
+  "delay": "1000",
+  "execMap": {
+    "js": "node"
+  }
+}
