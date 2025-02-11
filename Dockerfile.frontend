@@ -2,7 +2,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy client project files
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
 COPY client/ ./client/
 COPY server/config ./server/config/
 
@@ -10,7 +12,8 @@ WORKDIR /app/client
 
 # Clean install with platform-specific flags and Rollup
 RUN npm cache clean --force && \
-    npm install
+    npm install --no-optional && \
+    npm install @rollup/rollup-linux-x64-musl
 
 # Build the frontend
 RUN npm run build
