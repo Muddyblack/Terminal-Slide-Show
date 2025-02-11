@@ -23,7 +23,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/project-utils.sh" || {
 # -----------------------------------------------------------------------------
 readonly MODE_WEB="web"
 readonly MODE_TERMINAL="terminal"
-readonly WEB_PACKAGES="xserver-xorg-core xserver-xorg-video-fbdev xinit chromium chromium-common openbox x11-xserver-utils unclutter"
+readonly WEB_PACKAGES="xserver-xorg-core xserver-xorg-video-fbdev xinit chromium chromium-common openbox x11-xserver-utils unclutter xdotool"
 readonly TERMINAL_PACKAGES="mpv nodejs"
 
 # -----------------------------------------------------------------------------
