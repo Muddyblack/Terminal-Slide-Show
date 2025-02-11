@@ -79,6 +79,23 @@ launch_browser() {
     sleep 2
 }
 
+check_error_page() {
+    # Use xdotool to get the current window title
+    local title=$(DISPLAY=$DISPLAY_NUM xdotool getwindowname $(DISPLAY=$DISPLAY_NUM xdotool getactivewindow) 2>/dev/null)
+    
+    # Check for common error indicators in title
+    if [[ "$title" =~ "404" ]] || \
+       [[ "$title" =~ "Bad Gateway" ]] || \
+       [[ "$title" =~ "502" ]] || \
+       [[ "$title" =~ "503" ]] || \
+       [[ "$title" =~ "504" ]] || \
+       [[ "$title" =~ "Connection refused" ]] || \
+       [[ "$title" =~ "Not Found" ]]; then
+        return 0  # Error page detected
+    fi
+    return 1  # No error page detected
+}
+
 main() {
     setup_signal_handlers  # Changed from setup_signal_traps
     clear
@@ -87,11 +104,15 @@ main() {
     start_x_server || exit 1
     launch_browser || exit 1
 
-    # Simple monitoring loop
+    # Enhanced monitoring loop
     while true; do
         if ! pgrep -f chromium > /dev/null; then
             log_warn "Browser crashed, restarting..."
             launch_browser || exit 1
+        elif check_error_page; then
+            log_warn "Error page detected, refreshing browser..."
+            DISPLAY=$DISPLAY_NUM xdotool key F5
+            sleep 10  # Wait before next check to allow page to load
         fi
         sleep 5
     done
