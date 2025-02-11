@@ -2,7 +2,7 @@ import { google } from 'googleapis';
 import fs from 'fs-extra';
 import path from 'path';
 import { Logger } from '../utils/logger.js';
-import { config } from '../../../config/config.js';
+import { config } from '../../config/config.js';
 import { isValidFile } from '../utils/fileValidator.js';
 
 /**

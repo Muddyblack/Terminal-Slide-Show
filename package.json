@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev:frontend": "cd client && npm run dev",
-    "dev:backend": "cd server && node src/index.js",
+    "dev:backend": "cd server && npm run dev",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build": "cd client && npm run build",
     "preview": "cd client && npm run preview"

@@ -1,4 +1,4 @@
-import { config } from '../../../config/config.js';
+import { config } from '../../config/config.js';
 
 /**
  * Configurable logging utility that supports multiple log levels and formats

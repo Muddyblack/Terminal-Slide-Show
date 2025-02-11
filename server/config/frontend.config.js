@@ -1,4 +1,3 @@
-// config/frontend.config.js
 export const frontendConfig = {
     info: {
         location: "Friedrichshafen", // Location setting for geolocation services

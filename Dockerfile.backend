@@ -3,7 +3,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Copy server package files
-COPY server/package*.json ./server/
+COPY server/ ./server/
 
 # Create necessary directories and set permissions
 RUN mkdir -p downloads && chmod -R 777 downloads
@@ -15,12 +15,9 @@ WORKDIR /app/server
 RUN npm cache clean --force && \
     npm install
 
-# Copy server project files
-COPY server/ ./
-
 # Runtime configuration
 ENV HOST=0.0.0.0
 EXPOSE 3000
 
 # Start the server
-CMD ["node", "src/index.ts"]
+CMD ["node", "src/index.js"]
