@@ -83,7 +83,6 @@ check_error_page() {
     # Use xdotool to get the current window title
     local title=$(DISPLAY=$DISPLAY_NUM xdotool getwindowname $(DISPLAY=$DISPLAY_NUM xdotool getactivewindow) 2>/dev/null)
     
-    # Check for common error indicators in title
     if [[ "$title" =~ "404" ]] || \
        [[ "$title" =~ "Bad Gateway" ]] || \
        [[ "$title" =~ "502" ]] || \
@@ -97,14 +96,13 @@ check_error_page() {
 }
 
 main() {
-    setup_signal_handlers  # Changed from setup_signal_traps
+    setup_signal_handlers  
     clear
     init_project_logging "kiosk"
 
     start_x_server || exit 1
     launch_browser || exit 1
 
-    # Enhanced monitoring loop
     while true; do
         if ! pgrep -f chromium > /dev/null; then
             log_warn "Browser crashed, restarting..."
@@ -112,7 +110,7 @@ main() {
         elif check_error_page; then
             log_warn "Error page detected, refreshing browser..."
             DISPLAY=$DISPLAY_NUM xdotool key F5
-            sleep 10  # Wait before next check to allow page to load
+            sleep 10 
         fi
         sleep 5
     done
