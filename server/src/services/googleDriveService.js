@@ -17,6 +17,8 @@ export class GoogleDriveService {
         this.syncInterval = null;
         this.initialized = false;
         this.isPaused = false;
+        this.lastSyncTime = 0;
+        this.minSyncInterval = 5000; // Minimum 5 seconds between syncs
     }
   
     async initialize() {
@@ -67,19 +69,24 @@ export class GoogleDriveService {
         return;
       }
   
+      // Ensure minimum interval
+      const safeInterval = Math.max(interval, this.minSyncInterval);
+      
       this.syncInterval = setInterval(async () => {
-        if (!this.isPaused) {
+        if (!this.isPaused && Date.now() - this.lastSyncTime >= this.minSyncInterval) {
           try {
             await this.syncFiles();
+            this.lastSyncTime = Date.now();
           } catch (error) {
             this.logger.error('Sync failed:', error);
           }
         }
-      }, interval);
+      }, safeInterval);
   
       // Initial sync
       if (!this.isPaused) {
         await this.syncFiles();
+        this.lastSyncTime = Date.now();
       }
     }
 
@@ -90,6 +97,12 @@ export class GoogleDriveService {
    * @returns {Promise<Array<Object>>} List of synchronized files
    */
     async syncFiles() {
+        // Debounce check
+        if (Date.now() - this.lastSyncTime < this.minSyncInterval) {
+            this.logger.debug('Skipping sync - too soon since last sync');
+            return [];
+        }
+
         const MAX_RETRIES = 3;
         let attempt = 0;
     

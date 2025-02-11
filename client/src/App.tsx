@@ -1,7 +1,4 @@
-import { useEffect } from 'react';
-
 import Slideshow from '@/components/slideshow/slideshow';
-import { wsService } from '@/services/websocket';
 import useStore from '@/store';
 
 
@@ -13,10 +10,6 @@ import useStore from '@/store';
 const App = () => {
   const isConnected = useStore((state) => state.isWebsocketConnected);
 
-  useEffect(() => {
-    wsService.connect();
-    return () => wsService.disconnect();
-  }, []);
 
   return (
     <div className="App">
