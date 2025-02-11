@@ -15,7 +15,7 @@ import { DateParser } from './dateParser.js';
  */
 export function isValidFile(filename) {
     const parsedDate = DateParser.parseFileName(filename);
-    if (!parsedDate) {
+    if (!parsedDate || !parsedDate.startDate) {
         return false;
     }
 
@@ -24,12 +24,13 @@ export function isValidFile(filename) {
 
     // Helper to compare only dates, ignoring time
     const isSameDay = (date1, date2) => {
+        if (!date1 || !date2) return false;
         return date1.getFullYear() === date2.getFullYear() &&
                date1.getMonth() === date2.getMonth() &&
                date1.getDate() === date2.getDate();
     };
 
-    if (startDate > now && !isSameDay(startDate, now)) {
+    if (!startDate || (startDate > now && !isSameDay(startDate, now))) {
         return false;
     }
 
