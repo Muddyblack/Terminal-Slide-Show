@@ -42,5 +42,8 @@
   "bugs": {
     "url": "https://github.com/asta-dhbw/Terminal-Slide-Show/issues"
   },
-  "homepage": "https://github.com/asta-dhbw/Terminal-Slide-Show#readme"
+  "homepage": "https://github.com/asta-dhbw/Terminal-Slide-Show#readme",
+  "dependencies": {
+    "concurrently": "^9.1.2"
+  }
 }

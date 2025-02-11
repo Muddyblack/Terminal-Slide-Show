@@ -39,7 +39,7 @@ export const config = {
     timeout: 5 * 60 * 1000 // standard 5 minutes in milliseconds
   },
   paths: {
-    downloadPath: './downloads', // Path to download files from Google Drive
+    downloadPath: '../downloads', // Path to download files from Google Drive
   },
   logging: {
     level: 'debug', // Logging level (debug, info, warn, error)
