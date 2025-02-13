@@ -293,7 +293,6 @@ app.get('/api/weather', async (req, res) => {
 
         const { latitude, longitude, timezone } = geoData.results[0];
 
-        // Updated weather API call with fewer parameters
         const weatherResponse = await fetch(
             `https://api.open-meteo.com/v1/forecast?` +
             `latitude=${latitude}&longitude=${longitude}&` +
@@ -304,7 +303,6 @@ app.get('/api/weather', async (req, res) => {
         
         const weatherData = await weatherResponse.json();
 
-        // Transform the response to match our frontend expectations
         const enrichedResponse = {
             ...weatherData,
             location: {

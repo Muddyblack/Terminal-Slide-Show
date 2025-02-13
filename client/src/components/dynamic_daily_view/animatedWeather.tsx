@@ -16,7 +16,6 @@ import { AnimatedWeatherProps } from '@/components/dynamic_daily_view/types';
  * @returns {JSX.Element} Appropriate weather animation component
  */
 const getWeatherAnimation = (code: number, isNight: boolean): JSX.Element => {
-  console.log(code);
   switch (code) {
     case 0:
       return isNight ? <MoonAnimation /> : <SunnyAnimation />;

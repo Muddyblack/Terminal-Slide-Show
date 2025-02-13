@@ -25,7 +25,7 @@ const DynamicDailyView = () => {
   const [logoSrc, setLogoSrc] = useState('/slideshow.png');
   const [isImageLoading, setIsImageLoading] = useState(true);
 
-  const isNight = time.getHours() >= 18 || time.getHours() < 6;
+  const isNight = weather ? !weather.is_day : (time.getHours() >= 18 || time.getHours() < 6); // fallback to time-based check if weather data isn't available
 
   const loadFromCache = (key: string) => {
     try {
@@ -237,8 +237,7 @@ const DynamicDailyView = () => {
           <div
             className={`nasa-background ${isNight ? 'night' : 'day'}`}
             style={{ 
-              backgroundImage: `url(${nasaImage.url})`,
-              loading: "lazy"  // Add lazy loading
+              backgroundImage: `url(${nasaImage.url})`
             }}
           />
           <div className={`background-overlay ${isNight ? 'night' : 'day'}`} />
@@ -311,11 +310,12 @@ const DynamicDailyView = () => {
               temperature={weather.temperature}
               windSpeed={weather.windspeed}
               windDirection={weather.winddirection}
-              cloud_cover={weather.cloud_cover}  // Add this line
+              cloud_cover={weather.cloud_cover}
               rain={weather.rain}
               showers={weather.showers}
               snowfall={weather.snowfall}
               is_day={weather.is_day}
+              wind_gusts={weather.wind_gusts || 0}
             />
           )}
         </div>
