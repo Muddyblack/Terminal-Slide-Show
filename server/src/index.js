@@ -282,7 +282,6 @@ app.get('/api/weather', async (req, res) => {
     logger.debug(`Fetching weather for location: ${location}`);
 
     try {
-        // Get coordinates first
         const geoResponse = await fetch(
             `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1`
         );
@@ -292,21 +291,48 @@ app.get('/api/weather', async (req, res) => {
             return res.status(404).json({ error: 'Location not found' });
         }
 
-        const { latitude, longitude } = geoData.results[0];
+        const { latitude, longitude, timezone } = geoData.results[0];
 
-        // Get weather data
         const weatherResponse = await fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&windspeed_unit=kmh&timezone=auto`
+            `https://api.open-meteo.com/v1/forecast?` +
+            `latitude=${latitude}&longitude=${longitude}&` +
+            `current=temperature_2m,is_day,rain,showers,snowfall,` +
+            `weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,` +
+            `wind_gusts_10m&timezone=${encodeURIComponent(timezone)}&forecast_days=1`
         );
+        
         const weatherData = await weatherResponse.json();
 
-        res.json(weatherData);
+        const enrichedResponse = {
+            ...weatherData,
+            location: {
+                name: geoData.results[0].name,
+                timezone: timezone,
+                country: geoData.results[0].country,
+                latitude,
+                longitude
+            },
+            current_weather: {
+                temperature: weatherData.current.temperature_2m,
+                weathercode: weatherData.current.weather_code,
+                is_day: weatherData.current.is_day,
+                time: weatherData.current.time,
+                windspeed: weatherData.current.wind_speed_10m,
+                winddirection: weatherData.current.wind_direction_10m,
+                wind_gusts: weatherData.current.wind_gusts_10m,
+                cloud_cover: weatherData.current.cloud_cover,
+                rain: weatherData.current.rain,
+                showers: weatherData.current.showers,
+                snowfall: weatherData.current.snowfall
+            }
+        };
+
+        res.json(enrichedResponse);
     } catch (error) {
         logger.error('Failed to fetch weather:', error);
         res.status(500).json({ error: 'Failed to fetch weather data' });
     }
 });
-
 
 // Serve index.html for all other routes (SPA support)
 app.get('*', (req, res) => {

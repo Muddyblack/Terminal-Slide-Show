@@ -9,9 +9,30 @@
            p-4 border border-white/30 
            rounded-bl-2xl
            shadow-lg
-           max-w-[min(90vw,200px)]
+           max-w-[min(90vw,240px)]
            transition-all duration-300
            origin-top-right;
+  }
+
+  .weather-info-grid {
+    @apply grid grid-cols-2 gap-2 
+           mt-2 w-full
+           text-sm text-white/90;
+  }
+
+  .weather-info-item {
+    @apply flex items-center gap-1.5
+           bg-black/10 rounded-lg
+           px-2 py-1.5
+           hover:bg-black/20 transition-colors;
+  }
+
+  .info-icon {
+    @apply w-4 h-4 text-sky-300 shrink-0;
+  }
+
+  .info-value {
+    @apply font-medium min-w-[2.5rem] text-center;
   }
 
   .temperature-container {

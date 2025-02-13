@@ -1,9 +1,9 @@
 import { frontendConfig } from '@config/frontend.config';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import PropTypes from 'prop-types';
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 
-import { MediaCanvasProps, VideoPlayerProps, ImageCanvasProps, Dimensions } from './types';
+import { MediaCanvasProps, VideoPlayerProps, ImageCanvasProps, Dimensions } from '@/components/slideshow/types';
 
 /**
  * Constants for animation and styling
@@ -27,7 +27,7 @@ const getMediaType = (filename: string): 'image' | 'gif' | 'video' => {
   if (!filename) return 'image';
   const extension = filename.toLowerCase().split('.').pop() || '';
   if (extension === 'gif') return 'gif';
-  if (frontendConfig.mediaTypes.videoTypes.some(type => type.includes(extension))) return 'video';
+  if (frontendConfig.mediaTypes.videoTypes.some((type: string) => type.includes(extension))) return 'video';
   return 'image';
 };
 
@@ -248,7 +248,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = React.memo(({ media, mediaType }
 
   return (
     <motion.div
-      className="fixed inset-0 bg-black"
+      className="fixed inset-0 bg-transparent"
       key={`${media.name}-image`}
       {...ANIMATION_CONFIG}
     >
@@ -291,18 +291,25 @@ const MediaCanvas: React.FC<MediaCanvasProps> = React.memo(({ media }) => {
 
   if (!media) return null;
 
-  return mediaType === 'video'
-    ? <VideoPlayer media={media} />
-    : <ImageCanvas media={media} mediaType={mediaType} />;
+  return (
+    <AnimatePresence mode="sync">
+      {mediaType === 'video' ? (
+        // Give a unique key so that on change the exit/enter transitions run
+        <VideoPlayer media={media} key={`video-${media.id || media.name}`} />
+      ) : (
+        <ImageCanvas media={media} mediaType={mediaType} key={`image-${media.id || media.name}`} />
+      )}
+    </AnimatePresence>
+  );
 },
-  // Custom comparison function
-  (prevProps, nextProps) => {
-    return (
-      prevProps.media?.id === nextProps.media?.id &&
-      prevProps.media?.name === nextProps.media?.name &&
-      prevProps.media?.url === nextProps.media?.url
-    );
-  });
+// Custom comparison function
+(prevProps, nextProps) => {
+  return (
+    prevProps.media?.id === nextProps.media?.id &&
+    prevProps.media?.name === nextProps.media?.name &&
+    prevProps.media?.url === nextProps.media?.url
+  );
+});
 
 // PropTypes for type checking
 MediaCanvas.propTypes = {

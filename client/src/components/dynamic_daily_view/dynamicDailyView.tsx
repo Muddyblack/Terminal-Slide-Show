@@ -23,8 +23,9 @@ const DynamicDailyView = () => {
   const [greetings, setGreetings] = useState<GreetingsType>({});
   const isServerConnected = useServerStatus();
   const [logoSrc, setLogoSrc] = useState('/slideshow.png');
+  const [isImageLoading, setIsImageLoading] = useState(true);
 
-  const isNight = time.getHours() >= 18 || time.getHours() < 6;
+  const isNight = weather ? !weather.is_day : (time.getHours() >= 18 || time.getHours() < 6); // fallback to time-based check if weather data isn't available
 
   const loadFromCache = (key: string) => {
     try {
@@ -139,7 +140,6 @@ const DynamicDailyView = () => {
       setTime(new Date());
     }, 1000);
 
-    // Helper function to safely fetch data
     const safeDataFetch = async () => {
       console.debug('Current server connection status:', isServerConnected);
       if (!isServerConnected) {
@@ -167,7 +167,7 @@ const DynamicDailyView = () => {
 
       // If connected, fetch all data
       try {
-        await Promise.all([
+        await Promise.allSettled([
           fetchQuotes(),
           fetchWeather(),
           fetchFacts(),
@@ -184,12 +184,12 @@ const DynamicDailyView = () => {
     // Initial data load
     safeDataFetch();
 
-    // Set up content refresh timer only if connected
+    // Set up content refresh timer only if connected (increased to 10 minutes)
     const contentTimer = setInterval(() => {
       if (isServerConnected) {
         safeDataFetch();
       }
-    }, 300000); // 5 minutes
+    }, 600000); // 10 minutes
 
     // NASA info auto-toggle timer
     const nasaInfoTimer = setInterval(() => {
@@ -207,6 +207,16 @@ const DynamicDailyView = () => {
     };
   }, [isServerConnected]);  // Re-run when connection status changes
 
+  useEffect(() => {
+    if (nasaImage?.url) {
+      const img = new Image();
+      img.onload = () => {
+        setIsImageLoading(false);
+      };
+      img.src = nasaImage.url;
+    }
+  }, [nasaImage?.url]);
+
   const formattedDate = time.toLocaleDateString('de-DE', {
     weekday: 'long',
     year: 'numeric',
@@ -222,11 +232,13 @@ const DynamicDailyView = () => {
 
   return (
     <div className={`daily-view ${isNight ? 'night' : 'day'}`}>
-      {nasaImage && (
+      {nasaImage && !isImageLoading && (
         <>
           <div
             className={`nasa-background ${isNight ? 'night' : 'day'}`}
-            style={{ backgroundImage: `url(${nasaImage.url})` }}
+            style={{ 
+              backgroundImage: `url(${nasaImage.url})`
+            }}
           />
           <div className={`background-overlay ${isNight ? 'night' : 'day'}`} />
         </>
@@ -298,6 +310,12 @@ const DynamicDailyView = () => {
               temperature={weather.temperature}
               windSpeed={weather.windspeed}
               windDirection={weather.winddirection}
+              cloud_cover={weather.cloud_cover}
+              rain={weather.rain}
+              showers={weather.showers}
+              snowfall={weather.snowfall}
+              is_day={weather.is_day}
+              wind_gusts={weather.wind_gusts || 0}
             />
           )}
         </div>
