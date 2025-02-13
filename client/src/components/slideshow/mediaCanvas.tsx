@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 
-import { MediaCanvasProps, VideoPlayerProps, ImageCanvasProps, Dimensions } from './types';
+import { MediaCanvasProps, VideoPlayerProps, ImageCanvasProps, Dimensions } from '@/components/slideshow/types';
 
 /**
  * Constants for animation and styling

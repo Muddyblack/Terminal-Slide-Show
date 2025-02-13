@@ -3,8 +3,13 @@ export interface AnimatedWeatherProps {
     temperature: number;
     windSpeed: number;
     windDirection: number;
+    wind_gusts: number;
+    cloud_cover: number;
+    rain: number;
+    showers: number;
+    snowfall: number;
+    is_day: number;
 }
-
 
 export interface QuoteType {
     text: string;
@@ -15,8 +20,15 @@ export interface QuoteType {
 export interface WeatherType {
     weathercode: number;
     temperature: number;
+    is_day: number;
     windspeed: number;
     winddirection: number;
+    wind_gusts: number;
+    cloud_cover: number;
+    rain: number;
+    showers: number;
+    snowfall: number;
+    time: string;
 }
 
 export interface NasaImageType {

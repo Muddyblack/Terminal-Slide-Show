@@ -6,11 +6,9 @@ export const frontendConfig = {
         watchInterval: 1000, // Interval for watching media files in downloadPath in milliseconds
         defaultSlideDuration: 10000, // Default slide duration in milliseconds
         controlsInterval: 3000, // Interval for showing/hiding controls in milliseconds
-        initLoadDuration: 2000 // Initial load duration in milliseconds
     },
     polling: {
         serverStatusInterval: 10000, // Interval for polling server status in milliseconds
-        mediaLoaderInterval: 10000, // Interval for polling media loader in milliseconds
     },
     schedule: {
         enabled: true, // Enable or disable the schedule feature

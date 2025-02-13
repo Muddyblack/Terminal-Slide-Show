@@ -1,25 +1,20 @@
 import { AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-import MediaCanvas from './mediaCanvas.js';
-import { NavigationDirection, LocalMediaManagerReturn } from './types';
-import { frontendConfig } from '../../../../server/config/frontend.config.js';
+import MediaCanvas from '@/components/slideshow/mediaCanvas';
+import { NavigationDirection, LocalMediaManagerReturn } from '@/components/slideshow/types';
+import { frontendConfig } from '@config/frontend.config';
 
-import ConnectionToast from '@/components/connectionToast.jsx';
-import DynamicDailyView from '@/components/dynamic_daily_view/dynamicDailyView.jsx';
-import ErrorToast from '@/components/errorToast.jsx';
-import Loading from '@/components/loading.jsx';
-import Controls from '@/components/slideshow/controls.jsx';
-import { useControlsVisibility } from '@/hooks/useControlsVisibility.js';
-import { useLocalMediaManager } from '@/hooks/useLocalMediaManager.js';
-import { useSchedule } from '@/hooks/useSchedule.js';
-import { useServerStatus } from '@/hooks/useServerStatus.js';
+import ConnectionToast from '@/components/connectionToast';
+import DynamicDailyView from '@/components/dynamic_daily_view/dynamicDailyView';
+import ErrorToast from '@/components/errorToast';
+import Loading from '@/components/loading';
+import Controls from '@/components/slideshow/controls';
+import { useControlsVisibility } from '@/hooks/useControlsVisibility';
+import { useLocalMediaManager } from '@/hooks/useLocalMediaManager';
+import { useSchedule } from '@/hooks/useSchedule';
+import { useServerStatus } from '@/hooks/useServerStatus';
 import { isRaspberryPi } from '@/utils/deviceDetection';
-
-
-
-
-
 
 /**
  * @component Slideshow
@@ -54,6 +49,17 @@ const Slideshow = () => {
     }
   }, [isScheduleActive]);
 
+  // Clear media when schedule becomes inactive
+  useEffect(() => {
+    if (!isScheduleActive) {
+      // Force clear the media display
+      if (mediaManager.media) {
+        navigateMedia('next'); // This will trigger a re-render
+        setPaused(true);
+      }
+    }
+  }, [isScheduleActive]);
+
   const handleNavigate = useCallback(async (direction: NavigationDirection): Promise<void> => {
     if (!isScheduleActive) return;
     setPaused(true);
@@ -79,6 +85,15 @@ const Slideshow = () => {
       }
     };
   }, [paused, media, loading, isScheduleActive, handleNavigate]);
+
+  // Add isScheduleActive check to the main render logic
+  if (!isScheduleActive) {
+    return (
+      <div className="slideshow-container">
+        <div className="fixed inset-0 bg-black" />
+      </div>
+    );
+  }
 
   // Only show loading states if schedule is active and no cached media
   if (!isServerConnected && !media && isScheduleActive) {

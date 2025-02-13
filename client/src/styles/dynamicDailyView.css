@@ -43,6 +43,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .nasa-info.expanded {
@@ -167,10 +169,13 @@
   font-size: clamp(1.125rem, 1.125vw, 2.25rem);
   font-weight: 500;
   transition: transform 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .location-badge:hover {
-  transform: translateY(-2px);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
 
 .main-content {
@@ -185,6 +190,7 @@
   margin-bottom: clamp(1.5rem, 1.5vw, 3rem);
   color: #fff;
   animation: pulse 4s ease-in-out infinite;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .datetime-display {
@@ -201,6 +207,7 @@
   justify-content: center;
   gap: clamp(0.75rem, 0.75vw, 1.5rem);
   font-size: clamp(1.5rem, 1.5vw, 3rem);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .quote-card,
@@ -213,12 +220,17 @@
   transition: all 0.3s ease;
   cursor: pointer;
   max-width: clamp(48rem, 50vw, 96rem);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transform-origin: center;
+  will-change: transform, background;
 }
 
 .quote-card:hover,
 .fact-card:hover {
-  transform: translateY(-4px);
-  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-4px) scale(1.01);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
 }
 
 .quote-text {
@@ -607,4 +619,21 @@
   50% {
     opacity: 0.8;
   }
+}
+
+/* Add smooth transitions for all interactive elements */
+.interactive-element {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Improve loading states */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.2),
+    rgba(255, 255, 255, 0.1)
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
 }
