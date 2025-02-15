@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import '@/styles/dynamicDailyView.css';
 import AnimatedWeather from '@/components/dynamic_daily_view/animatedWeather';
 import { QuoteType, WeatherType, NasaImageType, GreetingsType } from '@/components/dynamic_daily_view/types';
-import { useServerStatus } from '@/hooks/useServerStatus';
+import { useServerStatus } from '@/contexts/ServerStatusContext';
 
 
 type SetterFunction = (value: any) => void;

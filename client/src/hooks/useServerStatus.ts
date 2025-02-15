@@ -1,52 +1,74 @@
 import { frontendConfig } from '@config/frontend.config';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
-/**
- * Custom hook to monitor server connection status with periodic polling
- * @param {boolean} isScheduleActive - Whether the schedule is currently active
- * @param {number} [pollingInterval=frontendConfig.polling.serverStatusInterval] - Interval in ms between status checks
- * @returns {boolean} Current server connection status
- */
+type ConnectionState = {
+  isConnected: boolean;
+  wasEverConnected: boolean;
+  hasLostConnection: boolean;
+};
+
 export const useServerStatus = (isScheduleActive = true, pollingInterval = frontendConfig.polling.serverStatusInterval) => {
-  const [isServerConnected, setIsServerConnected] = useState(false);
+  const [connectionState, setConnectionState] = useState<ConnectionState>({
+    isConnected: false,
+    wasEverConnected: false,
+    hasLostConnection: false,
+  });
+
+  const handleConnectionChange = useCallback((isConnected: boolean) => {
+    setConnectionState(prev => {
+      // First successful connection
+      if (isConnected && !prev.wasEverConnected) {
+        return {
+          isConnected: true,
+          wasEverConnected: true,
+          hasLostConnection: false,
+        };
+      }
+
+      // Connection lost
+      if (!isConnected && prev.wasEverConnected) {
+        return {
+          ...prev,
+          isConnected: false,
+          hasLostConnection: true,
+        };
+      }
+
+      // Connection restored after loss
+      if (isConnected && prev.hasLostConnection) {
+        window.location.reload();
+        return prev; // State will be reset on reload anyway
+      }
+
+      return { ...prev, isConnected };
+    });
+  }, []);
 
   useEffect(() => {
-    // Reset connection status when schedule becomes inactive
     if (!isScheduleActive) {
-      setIsServerConnected(false);
+      handleConnectionChange(false);
       return;
     }
 
-    /**
-     * Checks server status via API endpoint
-     * @async
-     * @function
-     */
     const checkServerStatus = async () => {
       try {
         const response = await fetch('/api/server-status');
-        if (response.ok) {
-          setIsServerConnected(true);
-        } else {
-          setIsServerConnected(false);
-        }
+        handleConnectionChange(response.ok);
       } catch (error) {
         console.error('Failed to check server status:', error);
-        setIsServerConnected(false);
+        handleConnectionChange(false);
       }
     };
 
-    // Initial check
-    checkServerStatus();
-
-    // Set up periodic polling only if schedule is active
+    // Initial check with delay
     const intervalId = setInterval(checkServerStatus, pollingInterval);
 
-    // Cleanup interval on unmount or when schedule becomes inactive
-    return () => clearInterval(intervalId);
-  }, [pollingInterval, isScheduleActive]);
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [isScheduleActive, pollingInterval, handleConnectionChange]);
 
-  return isServerConnected;
+  return connectionState.isConnected;
 };
 
 export default useServerStatus;
