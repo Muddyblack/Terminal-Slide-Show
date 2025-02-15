@@ -122,7 +122,12 @@ const SunnyAnimation = () => (
         <stop offset="0%" style={{ stopColor: "#FFD700", stopOpacity: 1 }} />
         <stop offset="100%" style={{ stopColor: "#FFA500", stopOpacity: 1 }} />
       </radialGradient>
+      <radialGradient id="sun-corona-gradient" cx="50%" cy="50%" r="60%">
+        <stop offset="0%" style={{ stopColor: "rgba(255,215,0,0.6)", stopOpacity: 1 }} />
+        <stop offset="100%" style={{ stopColor: "rgba(255,215,0,0)", stopOpacity: 0 }} />
+      </radialGradient>
     </defs>
+    {/* Sun core */}
     <circle
       cx="50"
       cy="50"
@@ -130,38 +135,17 @@ const SunnyAnimation = () => (
       fill="url(#sun-gradient)"
       className="sunny-circle"
     />
-    {[...Array(8)].map((_, i) => (
-      <line
-        key={i}
-        x1="50"
-        y1="50"
-        x2="50"
-        y2="20"
-        stroke="#FFD700"
-        strokeWidth="4"
-        className="sunny-ray"
-        style={{
-          transformOrigin: '50% 50%',
-          transform: `rotate(${i * 45}deg)`,
-        }}
-      />
-    ))}
+
+    {/* Removed sun rays for a realistic flare */}
     <style>{`
       .sunny-circle {
         animation: pulse 2s infinite;
         filter: drop-shadow(0 0 10px #FFD700);
       }
-      .sunny-ray {
-        animation: ray-pulse 2s infinite;
-        filter: drop-shadow(0 0 5px #FFD700);
-      }
+
       @keyframes pulse {
         0%, 100% { transform: scale(1); }
         50% { transform: scale(1.1); }
-      }
-      @keyframes ray-pulse {
-        0%, 100% { transform: rotate(0deg) scale(1); }
-        50% { transform: rotate(45deg) scale(1.1); }
       }
     `}</style>
   </svg>

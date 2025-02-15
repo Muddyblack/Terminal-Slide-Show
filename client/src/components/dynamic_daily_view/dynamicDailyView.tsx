@@ -135,51 +135,27 @@ const DynamicDailyView = () => {
     return 'Nachtschicht oder Feierabend? 🌙';
   };
 
+  const safeDataFetch = async () => {
+    console.debug('Current server connection status:', isServerConnected);
+    try {
+      await Promise.allSettled([
+        fetchQuotes(),
+        fetchWeather(),
+        fetchFacts(),
+        fetchNasaImage(),
+        fetchGreetings()
+      ]);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     const timer = setInterval(() => {
       setTime(new Date());
     }, 1000);
-
-    const safeDataFetch = async () => {
-      console.debug('Current server connection status:', isServerConnected);
-      if (!isServerConnected) {
-        console.debug('Server disconnected - using cache');
-
-        // Try loading from cache for each data type
-        const cachedQuotes = loadFromCache('quotes');
-        if (cachedQuotes) setQuote(cachedQuotes);
-
-        const cachedWeather = loadFromCache('weather');
-        if (cachedWeather) setWeather(cachedWeather);
-
-        const cachedFacts = loadFromCache('facts');
-        if (cachedFacts) setFact(cachedFacts);
-
-        const cachedNasa = loadFromCache('nasa');
-        if (cachedNasa) setNasaImage(cachedNasa);
-
-        const cachedGreetings = loadFromCache('greetings');
-        if (cachedGreetings) setGreetings(cachedGreetings);
-
-        setIsLoading(false);
-        return;
-      }
-
-      // If connected, fetch all data
-      try {
-        await Promise.allSettled([
-          fetchQuotes(),
-          fetchWeather(),
-          fetchFacts(),
-          fetchNasaImage(),
-          fetchGreetings()
-        ]);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
 
     // Initial data load
     safeDataFetch();
