@@ -13,7 +13,7 @@ import Controls from '@/components/slideshow/controls';
 import { useControlsVisibility } from '@/hooks/useControlsVisibility';
 import { useLocalMediaManager } from '@/hooks/useLocalMediaManager';
 import { useSchedule } from '@/hooks/useSchedule';
-import { useServerStatus } from '@/hooks/useServerStatus';
+import { useServerStatus } from '@/contexts/ServerStatusContext';
 import { isRaspberryPi } from '@/utils/deviceDetection';
 
 /**
@@ -31,7 +31,7 @@ const Slideshow = () => {
   const mediaManager = useLocalMediaManager(isScheduleActive) as unknown as LocalMediaManagerReturn;
   const { media, loading, error, serverReady, navigateMedia } = mediaManager;
   const showControls = useControlsVisibility();
-  const isServerConnected = useServerStatus(isScheduleActive);
+  const isServerConnected = useServerStatus();
 
   // State for managing playback
   const [paused, setPaused] = useState(false);

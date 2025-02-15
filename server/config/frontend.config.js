@@ -8,7 +8,7 @@ export const frontendConfig = {
         controlsInterval: 3000, // Interval for showing/hiding controls in milliseconds
     },
     polling: {
-        serverStatusInterval: 10000, // Interval for polling server status in milliseconds
+        serverStatusInterval: 1000, // Interval for polling server status in milliseconds
     },
     schedule: {
         enabled: true, // Enable or disable the schedule feature

@@ -2,7 +2,7 @@ import { frontendConfig } from '@config/frontend.config';
 import { useState, useCallback, useEffect, useRef } from 'react';
 
 import { NavigationDirection } from '@/components/slideshow/types';
-import { useServerStatus } from '@/hooks/useServerStatus';
+import { useServerStatus } from '@/contexts/ServerStatusContext';
 
 interface MediaItem {
   id: string;
@@ -26,7 +26,7 @@ export const useLocalMediaManager = (isScheduleActive = true): MediaManagerResul
   const [webSocketStatus, setWebSocketStatus] = useState<MediaManagerResult['webSocketStatus']>('disconnected');
   const [serverReady, setServerReady] = useState(false);
 
-  const isServerConnected = useServerStatus(isScheduleActive);
+  const isServerConnected = useServerStatus();
 
   // Use refs for WebSocket and reconnection timer
   const wsRef = useRef<WebSocket | null>(null);
