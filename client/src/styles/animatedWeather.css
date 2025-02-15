@@ -82,3 +82,20 @@
 }
 
 /* Media query adjustments using Tailwind breakpoints in the component itself */
+@media (max-width: 600px) {
+  .weather-badge {
+    width: 50px;
+    height: 50px;
+    padding: 0.25rem;
+    border-radius: 50%;
+    top: 10px;
+    right: 10px;
+    max-width: none;
+  }
+  
+  /* Hide temperature and extra info for mobile for minimal display */
+  .temperature-container,
+  .weather-info-grid {
+    display: none;
+  }
+}
