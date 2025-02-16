@@ -1,4 +1,3 @@
-import { ServerStatusProvider } from '@/contexts/ServerStatusContext';
 import Slideshow from '@/components/slideshow/slideshow';
 
 /**
@@ -8,9 +7,9 @@ import Slideshow from '@/components/slideshow/slideshow';
  */
 const App = () => {
   return (
-    <ServerStatusProvider>
+    <>
       <Slideshow />
-    </ServerStatusProvider>
+    </>
   );
 };
 
