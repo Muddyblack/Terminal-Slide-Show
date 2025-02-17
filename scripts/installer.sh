@@ -137,14 +137,6 @@ install_packages() {
     sudo apt-get autoremove -y
 }
 
-install_emoji_fonts() {
-    log_info "Installing emoji supporting fonts..."
-    sudo apt-get install -y fonts-noto-color-emoji || {
-        log_error "Failed to install emoji fonts"
-        return 1
-    }
-}
-
 optimize_system() {
     log_info "Optimizing system for kiosk mode..."
     
@@ -326,10 +318,6 @@ main() {
     # Install required packages
     local packages="$([[ $SELECTED_MODE = $MODE_WEB ]] && echo "$WEB_PACKAGES" || echo "$TERMINAL_PACKAGES")"
     install_packages "$packages"
-
-    # Install emoji fonts
-    install_emoji_fonts
-
     optimize_system
 
     # Create and configure kiosk user

@@ -666,8 +666,8 @@ const AnimatedWeather: React.FC<AnimatedWeatherProps> = ({
               {getWeatherIcon()}
               <span className="info-value">
                 {rain > 0 && `Rain ${rain}mm`}
-                {showers > 0 && ` Showers ${showers}mm`}
-                {snowfall > 0 && ` Snow ${snowfall}cm`}
+                {showers > 0 && `Showers ${showers}mm`}
+                {snowfall > 0 && `Snow ${snowfall}cm`}
               </span>
             </div>
           )}
