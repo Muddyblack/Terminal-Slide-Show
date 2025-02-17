@@ -165,43 +165,56 @@ const ImageCanvas: React.FC<ImageCanvasProps> = React.memo(({ media, mediaType }
  * Updates canvas with current image and blur effect
  * @param {HTMLImageElement} image - Image to render
  */
-  const updateCanvas = useCallback((image: HTMLImageElement) => {
-    if (!image?.complete || !canvasRef.current) return;
+const updateCanvas = useCallback((image: HTMLImageElement) => {
+  if (!image?.complete || !canvasRef.current) return;
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d'); // use { alpha: false } for more optimization
-    
-    if (!ctx) throw new Error('Failed to get canvas context');
+  const canvas = canvasRef.current;
+  const ctx = canvas.getContext('2d');
+  
+  if (!ctx) throw new Error('Failed to get canvas context');
 
-    if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
+  const dpr = window.devicePixelRatio || 1;
+  const displayWidth = window.innerWidth;
+  const displayHeight = window.innerHeight;
 
-    const dims = calculateDimensions(
-      image.width,
-      image.height,
-      canvas.width,
-      canvas.height
-    );
+  // Set canvas size accounting for device pixel ratio
+  canvas.width = displayWidth * dpr;
+  canvas.height = displayHeight * dpr;
+  canvas.style.width = `${displayWidth}px`;
+  canvas.style.height = `${displayHeight}px`;
 
-    const blurredBackground = createBlurredBackground(
-      image,
-      dims,
-      canvas.width,
-      canvas.height
-    );
+  // Scale context to account for device pixel ratio
+  ctx.scale(dpr, dpr);
 
-    ctx.filter = 'none';
-    ctx.drawImage(blurredBackground, 0, 0);
+  // Enable high quality image rendering
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
 
-    if (mediaType !== 'gif') {
-      ctx.drawImage(image, dims.x, dims.y, dims.scaledWidth, dims.scaledHeight);
-    }
+  const dims = calculateDimensions(
+    image.width,
+    image.height,
+    displayWidth,
+    displayHeight
+  );
 
-    setDimensions(dims);
-    setIsLoading(false);
-  }, [mediaType, calculateDimensions, createBlurredBackground]);
+  // Rest of the existing blur and edge drawing code
+  const blurredBackground = createBlurredBackground(
+    image,
+    dims,
+    displayWidth,
+    displayHeight
+  );
+
+  ctx.filter = 'none';
+  ctx.drawImage(blurredBackground, 0, 0, displayWidth, displayHeight);
+
+  if (mediaType !== 'gif') {
+    ctx.drawImage(image, dims.x, dims.y, dims.scaledWidth, dims.scaledHeight);
+  }
+
+  setDimensions(dims);
+  setIsLoading(false);
+}, [mediaType, calculateDimensions, createBlurredBackground]);
 
   /**
  * Handles window resize events with debouncing
