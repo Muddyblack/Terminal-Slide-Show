@@ -185,6 +185,7 @@
 }
 
 .greeting-text {
+  font-family: "Noto Color Emoji", "Roboto", sans-serif;
   font-size: clamp(4rem, 4vw, 8rem);
   font-weight: bold;
   margin-bottom: clamp(1.5rem, 1.5vw, 3rem);
