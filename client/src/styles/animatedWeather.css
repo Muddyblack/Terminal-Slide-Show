@@ -12,6 +12,7 @@
            max-w-[min(90vw,240px)]
            transition-all duration-300
            origin-top-right;
+    overflow-wrap: break-word;
   }
 
   .weather-info-grid {
@@ -25,6 +26,7 @@
            bg-black/10 rounded-lg
            px-2 py-1.5
            hover:bg-black/20 transition-colors;
+    min-width: 0; 
   }
 
   .info-icon {
@@ -33,6 +35,8 @@
 
   .info-value {
     @apply font-medium min-w-[2.5rem] text-center;
+    white-space: normal;
+    overflow-wrap: break-word;
   }
 
   .temperature-container {
@@ -45,6 +49,7 @@
            bg-clip-text text-transparent
            drop-shadow-[0_4px_15px_rgba(74,222,128,0.3)]
            animate-temperature-pulse;
+    overflow-wrap: break-word;
   }
 
   .weather-details {
@@ -97,5 +102,19 @@
   .temperature-container,
   .weather-info-grid {
     display: none;
+  }
+}
+
+/* Adjustments for 4K resolution */
+@media (min-width: 3840px) {
+  .weather-badge {
+    max-width: 220px;
+    p-2: 0.5rem; /* reduces padding */
+  }
+  .temperature-text {
+    font-size: clamp(1.1rem,3vw,1.8rem);
+  }
+  .info-value {
+    font-size: 0.85rem;
   }
 }
