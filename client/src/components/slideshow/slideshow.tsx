@@ -54,7 +54,7 @@ const Slideshow = () => {
     if (!isScheduleActive) {
       // Force clear the media display
       if (mediaManager.media) {
-        navigateMedia('next'); // This will trigger a re-render
+        navigateMedia('next');
         setPaused(true);
       }
     }
