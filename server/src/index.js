@@ -87,27 +87,37 @@ app.use('/media', (req, res, next) => {
 
 // conditional requests for media files
 app.use('/media', (req, res, next) => {
-    const filePath = path.join(process.cwd(), config.paths.downloadPath, req.url);
+    const mediaRoot = path.join(process.cwd(), config.paths.downloadPath);
+    const filePath = path.resolve(mediaRoot, '.' + req.url);
+
+    // Prevent path traversal: ensure resolved path stays within mediaRoot
+    if (!filePath.startsWith(mediaRoot + path.sep)) {
+        return res.sendStatus(403);
+    }
 
     // Generate ETag from file stats
-    fs.stat(filePath, (err, stats) => {
-        if (err) return next();
+    (async () => {
+        try {
+            const stats = await fs.stat(filePath);
 
-        const etag = `W/"${stats.size}-${stats.mtime.getTime()}"`;
-        res.set('ETag', etag);
+            const etag = `W/"${stats.size}-${stats.mtime.getTime()}"`;
+            res.set('ETag', etag);
 
-        // Check if client's cached version matches
-        if (req.headers['if-none-match'] === etag) {
-            return res.sendStatus(304); // Not Modified
+            // Check if client's cached version matches
+            if (req.headers['if-none-match'] === etag) {
+                return res.sendStatus(304); // Not Modified
+            }
+
+            res.set({
+                'Cache-Control': 'public, max-age=86400',
+                'Last-Modified': stats.mtime.toUTCString()
+            });
+
+            next();
+        } catch (err) {
+            return next();
         }
-
-        res.set({
-            'Cache-Control': 'public, max-age=86400',
-            'Last-Modified': stats.mtime.toUTCString()
-        });
-
-        next();
-    });
+    })();
 }, express.static(path.join(process.cwd(), config.paths.downloadPath)));
 
 // Security Middleware
