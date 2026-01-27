@@ -91,7 +91,8 @@ app.use('/media', (req, res, next) => {
     const filePath = path.resolve(mediaRoot, '.' + req.url);
 
     // Prevent path traversal: ensure resolved path stays within mediaRoot
-    if (!filePath.startsWith(mediaRoot + path.sep)) {
+    const relativePath = path.relative(mediaRoot, filePath);
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
         return res.sendStatus(403);
     }
 
