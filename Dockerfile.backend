@@ -2,22 +2,34 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy server package files
+# Install su-exec for privilege de-escalation
+RUN apk add --no-cache su-exec
+
+# Copy server package files first for better caching
+COPY server/package*.json ./server/
+WORKDIR /app/server
+RUN npm ci --only=production
+
+# Return to root to copy source
+WORKDIR /app
 COPY server/ ./server/
 
-# Create necessary directories and set permissions
-RUN mkdir -p downloads && chmod -R 777 downloads
+# Create required directories
+RUN mkdir -p /app/downloads
 
-# Set working directory to server folder
+# Make entrypoint executable (it is copied with server/ content)
+RUN chmod +x /app/server/entrypoint.sh
+
+# We do NOT run "USER node" here. 
+# We start as root to fix volume permissions in entrypoint.sh, then drop to node.
+
 WORKDIR /app/server
-
-# Install dependencies
-RUN npm cache clean --force && \
-    npm install
 
 # Runtime configuration
 ENV HOST=0.0.0.0
+ENV NODE_ENV=production
 EXPOSE 3000
 
-# Start the server
+# Use the entrypoint to fix permissions and switch user
+ENTRYPOINT ["/app/server/entrypoint.sh"]
 CMD ["node", "src/index.js"]
