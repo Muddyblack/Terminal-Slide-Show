@@ -19,6 +19,15 @@ const BLUR_AMOUNT = '20px';
 const MEDIA_PATH = '/media';
 
 /**
+ * Encodes a media filename for use in URLs
+ * @param {string} name - The raw filename
+ * @returns {string} URL-encoded filename
+ */
+const getMediaUrl = (name: string): string => {
+  return `${MEDIA_PATH}/${encodeURIComponent(name)}`;
+};
+
+/**
  * Determines media type from filename
  * @param {string} filename - Name of the media file
  * @returns {'image'|'gif'|'video'} Media type
@@ -66,7 +75,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ media }) => {
       autoPlay={frontendConfig.mediaTypes.autoplay}
       loop={frontendConfig.mediaTypes.loop}
       onEnded={handleVideoEnd}
-      src={`${MEDIA_PATH}/${media.name}`}
+      src={getMediaUrl(media.name)}
     />
   );
 });
@@ -128,20 +137,20 @@ const ImageCanvas: React.FC<ImageCanvasProps> = React.memo(({ media, mediaType }
   ): HTMLCanvasElement => {
     const { scaledWidth, scaledHeight, x, y } = dimensions;
     const { width: imgWidth, height: imgHeight } = image;
-  
+
     const tempCanvas = document.createElement('canvas');
     const tempCtx = tempCanvas.getContext('2d');
-    
+
     if (!tempCtx) throw new Error('Failed to get canvas context');
-  
+
     tempCanvas.width = canvasWidth;
     tempCanvas.height = canvasHeight;
-  
+
     // Draw main image
     tempCtx.imageSmoothingQuality = 'medium';
     tempCtx.drawImage(image, x, y, scaledWidth, scaledHeight);
     tempCtx.filter = `blur(${BLUR_AMOUNT})`;
-  
+
     // Draw edges for blur effect
     const edges = [
       { sx: 0, sy: 0, sw: 1, sh: imgHeight, dx: 0, dy: 0, dw: x, dh: canvasHeight },
@@ -149,15 +158,15 @@ const ImageCanvas: React.FC<ImageCanvasProps> = React.memo(({ media, mediaType }
       { sx: 0, sy: 0, sw: imgWidth, sh: 1, dx: x, dy: 0, dw: scaledWidth, dh: y },
       { sx: 0, sy: imgHeight - 1, sw: imgWidth, sh: 1, dx: x, dy: y + scaledHeight, dw: scaledWidth, dh: canvasHeight - (y + scaledHeight) }
     ];
-  
+
     edges.forEach(edge => {
       tempCtx.drawImage(image, edge.sx, edge.sy, edge.sw, edge.sh, edge.dx, edge.dy, edge.dw, edge.dh);
     });
-  
+
     // Add darkness overlay
-    tempCtx.fillStyle = 'rgba(0, 0, 0, 0.25)'; 
-    tempCtx.fillRect(0, 0, canvasWidth+50, canvasHeight+50);
-  
+    tempCtx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+    tempCtx.fillRect(0, 0, canvasWidth + 50, canvasHeight + 50);
+
     return tempCanvas;
   }, []);
 
@@ -165,56 +174,56 @@ const ImageCanvas: React.FC<ImageCanvasProps> = React.memo(({ media, mediaType }
  * Updates canvas with current image and blur effect
  * @param {HTMLImageElement} image - Image to render
  */
-const updateCanvas = useCallback((image: HTMLImageElement) => {
-  if (!image?.complete || !canvasRef.current) return;
+  const updateCanvas = useCallback((image: HTMLImageElement) => {
+    if (!image?.complete || !canvasRef.current) return;
 
-  const canvas = canvasRef.current;
-  const ctx = canvas.getContext('2d');
-  
-  if (!ctx) throw new Error('Failed to get canvas context');
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
 
-  const dpr = window.devicePixelRatio || 1;
-  const displayWidth = window.innerWidth;
-  const displayHeight = window.innerHeight;
+    if (!ctx) throw new Error('Failed to get canvas context');
 
-  // Set canvas size accounting for device pixel ratio
-  canvas.width = displayWidth * dpr;
-  canvas.height = displayHeight * dpr;
-  canvas.style.width = `${displayWidth}px`;
-  canvas.style.height = `${displayHeight}px`;
+    const dpr = window.devicePixelRatio || 1;
+    const displayWidth = window.innerWidth;
+    const displayHeight = window.innerHeight;
 
-  // Scale context to account for device pixel ratio
-  ctx.scale(dpr, dpr);
+    // Set canvas size accounting for device pixel ratio
+    canvas.width = displayWidth * dpr;
+    canvas.height = displayHeight * dpr;
+    canvas.style.width = `${displayWidth}px`;
+    canvas.style.height = `${displayHeight}px`;
 
-  // Enable high quality image rendering
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
+    // Scale context to account for device pixel ratio
+    ctx.scale(dpr, dpr);
 
-  const dims = calculateDimensions(
-    image.width,
-    image.height,
-    displayWidth,
-    displayHeight
-  );
+    // Enable high quality image rendering
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
-  // Rest of the existing blur and edge drawing code
-  const blurredBackground = createBlurredBackground(
-    image,
-    dims,
-    displayWidth,
-    displayHeight
-  );
+    const dims = calculateDimensions(
+      image.width,
+      image.height,
+      displayWidth,
+      displayHeight
+    );
 
-  ctx.filter = 'none';
-  ctx.drawImage(blurredBackground, 0, 0, displayWidth, displayHeight);
+    // Rest of the existing blur and edge drawing code
+    const blurredBackground = createBlurredBackground(
+      image,
+      dims,
+      displayWidth,
+      displayHeight
+    );
 
-  if (mediaType !== 'gif') {
-    ctx.drawImage(image, dims.x, dims.y, dims.scaledWidth, dims.scaledHeight);
-  }
+    ctx.filter = 'none';
+    ctx.drawImage(blurredBackground, 0, 0, displayWidth, displayHeight);
 
-  setDimensions(dims);
-  setIsLoading(false);
-}, [mediaType, calculateDimensions, createBlurredBackground]);
+    if (mediaType !== 'gif') {
+      ctx.drawImage(image, dims.x, dims.y, dims.scaledWidth, dims.scaledHeight);
+    }
+
+    setDimensions(dims);
+    setIsLoading(false);
+  }, [mediaType, calculateDimensions, createBlurredBackground]);
 
   /**
  * Handles window resize events with debouncing
@@ -243,9 +252,9 @@ const updateCanvas = useCallback((image: HTMLImageElement) => {
         updateCanvas(imageRef.current);
       }
     };
-    imageRef.current.src = `${MEDIA_PATH}/${media.name}`; +
+    imageRef.current.src = getMediaUrl(media.name);
 
-      window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('resize', handleResize);
@@ -269,7 +278,7 @@ const updateCanvas = useCallback((image: HTMLImageElement) => {
       {mediaType === 'gif' && dimensions && !isLoading && (
         <div className="absolute inset-0 z-10 pointer-events-none">
           <img
-            src={`${MEDIA_PATH}/${media.name}`}
+            src={getMediaUrl(media.name)}
             alt="Animated GIF"
             style={{
               position: 'absolute',
@@ -315,14 +324,14 @@ const MediaCanvas: React.FC<MediaCanvasProps> = React.memo(({ media }) => {
     </AnimatePresence>
   );
 },
-// Custom comparison function
-(prevProps, nextProps) => {
-  return (
-    prevProps.media?.id === nextProps.media?.id &&
-    prevProps.media?.name === nextProps.media?.name &&
-    prevProps.media?.url === nextProps.media?.url
-  );
-});
+  // Custom comparison function
+  (prevProps, nextProps) => {
+    return (
+      prevProps.media?.id === nextProps.media?.id &&
+      prevProps.media?.name === nextProps.media?.name &&
+      prevProps.media?.url === nextProps.media?.url
+    );
+  });
 
 // PropTypes for type checking
 MediaCanvas.propTypes = {

@@ -46,7 +46,7 @@ async function initialize() {
         // Initialize core services first
         await slideshowManager.initialize();
         await googleDriveService.initialize();
-        
+
         // Start services
         await googleDriveService.startSync();
 
@@ -95,7 +95,9 @@ app.use('/media', (req, res, next) => {
     (async () => {
         try {
             const mediaRoot = path.join(process.cwd(), config.paths.downloadPath);
-            const filePath = path.resolve(mediaRoot, '.' + req.url);
+            // Decode URL-encoded characters (e.g., %20 -> space) before resolving file path
+            const decodedUrl = decodeURIComponent(req.url);
+            const filePath = path.resolve(mediaRoot, '.' + decodedUrl);
 
             if (!filePath.startsWith(mediaRoot + path.sep)) {
                 return res.sendStatus(403);
@@ -103,7 +105,7 @@ app.use('/media', (req, res, next) => {
 
             // Generate ETag from file stats
             const stats = await fs.stat(filePath);
-            
+
             const etag = `W/"${stats.size}-${stats.mtime.getTime()}"`;
             res.set('ETag', etag);
 
@@ -314,7 +316,7 @@ app.get('/api/weather', async (req, res) => {
             `weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,` +
             `wind_gusts_10m&timezone=${encodeURIComponent(timezone)}&forecast_days=1`
         );
-        
+
         const weatherData = await weatherResponse.json();
 
         const enrichedResponse = {
