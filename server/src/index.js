@@ -74,12 +74,17 @@ const handleClientActivity = (req, res, next) => {
  * 3. Media files with caching
  */
 
-app.use(express.static(path.join(process.cwd(), 'client', 'public')));
-app.use(express.static(path.join(process.cwd(), 'dist')));
+const staticOptions = {
+    maxAge: '1y',
+    etag: true
+};
+
+app.use(express.static(path.join(process.cwd(), 'client', 'public'), staticOptions));
+app.use(express.static(path.join(process.cwd(), 'dist'), staticOptions));
 app.use('/media', (req, res, next) => {
-    // Cache for 1 day by default
+    // Cache for 1 year
     res.set({
-        'Cache-Control': 'public, max-age=86400',
+        'Cache-Control': 'public, max-age=31536000',
         'ETag': true
     });
     next();
@@ -87,27 +92,36 @@ app.use('/media', (req, res, next) => {
 
 // conditional requests for media files
 app.use('/media', (req, res, next) => {
-    const filePath = path.join(process.cwd(), config.paths.downloadPath, req.url);
+    (async () => {
+        try {
+            const mediaRoot = path.join(process.cwd(), config.paths.downloadPath);
+            const filePath = path.resolve(mediaRoot, '.' + req.url);
 
-    // Generate ETag from file stats
-    fs.stat(filePath, (err, stats) => {
-        if (err) return next();
+            if (!filePath.startsWith(mediaRoot + path.sep)) {
+                return res.sendStatus(403);
+            }
 
-        const etag = `W/"${stats.size}-${stats.mtime.getTime()}"`;
-        res.set('ETag', etag);
+            // Generate ETag from file stats
+            const stats = await fs.stat(filePath);
+            
+            const etag = `W/"${stats.size}-${stats.mtime.getTime()}"`;
+            res.set('ETag', etag);
 
-        // Check if client's cached version matches
-        if (req.headers['if-none-match'] === etag) {
-            return res.sendStatus(304); // Not Modified
+            // Check if client's cached version matches
+            if (req.headers['if-none-match'] === etag) {
+                return res.sendStatus(304); // Not Modified
+            }
+
+            res.set({
+                'Cache-Control': 'public, max-age=31536000',
+                'Last-Modified': stats.mtime.toUTCString()
+            });
+
+            next();
+        } catch (err) {
+            next();
         }
-
-        res.set({
-            'Cache-Control': 'public, max-age=86400',
-            'Last-Modified': stats.mtime.toUTCString()
-        });
-
-        next();
-    });
+    })();
 }, express.static(path.join(process.cwd(), config.paths.downloadPath)));
 
 // Security Middleware
