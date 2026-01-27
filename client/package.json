@@ -22,7 +22,7 @@
         "prop-types": "^15.8.1",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
-        "react-router-dom": "^7.1.5",
+        "react-router-dom": "^7.13.0",
         "react-swipeable": "^7.0.2",
         "socket.io-client": "^4.8.1",
         "tailwind-merge": "^3.0.1",
