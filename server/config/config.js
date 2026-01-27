@@ -42,7 +42,7 @@ export const config = {
     downloadPath: '../downloads', // Path to download files from Google Drive
   },
   logging: {
-    level: 'debug', // Logging level (debug, info, warn, error)
+    level: process.env.LOG_LEVEL || 'warn', // Logging level (debug, info, warn, error)
     format: 'json' // Logging format (text, json)
   },
   backend: {
