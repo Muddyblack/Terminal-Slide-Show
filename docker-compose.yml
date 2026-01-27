@@ -8,10 +8,8 @@ services:
       - "5173:80"
     environment:
       - NODE_ENV=production
-      # Nginx serves static files, so VITE_BACKEND_URL needs to be baked in at BUILD time usually.
-      # However, if your app uses this at runtime, it's fine. 
-      # Note: For static builds, env vars usually need to be present during 'npm run build' in the Dockerfile 
-      # OR injected via a window object at runtime if you want dynamic configuration.
+      # Nginx log level: debug, info, notice, warn, error, crit (default: warn)
+      - NGINX_LOG_LEVEL=warn
     networks:
       - app-network
   backend:
