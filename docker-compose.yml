@@ -1,16 +1,19 @@
 services:
   frontend:
-      build:
-        context: .
-        dockerfile: Dockerfile.frontend
-      restart: unless-stopped
-      ports:
-        - "5173:5173"
-      environment:
-        - NODE_ENV=production
-        - VITE_BACKEND_URL=http://backend:3000
-      networks:
-        - app-network
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    environment:
+      - NODE_ENV=production
+      # Nginx serves static files, so VITE_BACKEND_URL needs to be baked in at BUILD time usually.
+      # However, if your app uses this at runtime, it's fine. 
+      # Note: For static builds, env vars usually need to be present during 'npm run build' in the Dockerfile 
+      # OR injected via a window object at runtime if you want dynamic configuration.
+    networks:
+      - app-network
   backend:
     build:
       context: .
