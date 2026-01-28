@@ -84,7 +84,7 @@ terminal-slide-show/
 
 ```bash
 # Clone the repository
-git clone https://github.com/asta-dhbw/Terminal-Slide-Show.git
+git clone URL
 cd terminal-slide-show
 
 # Install dependencies
