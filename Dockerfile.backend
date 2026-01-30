@@ -2,25 +2,26 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Create a non-root user and group (node:node already exists in alpine image, but we configure permissions)
-# We do this before copying files to ensure ownership can be set correctly
+# Install su-exec for clean user switching (allows dropping privileges at runtime)
+RUN apk add --no-cache su-exec
 
 # Copy server package files first for better caching
 COPY server/package*.json ./server/
 WORKDIR /app/server
 RUN npm ci --only=production
 
-# Return to root to copy source
+# Return to root to copy source code
 WORKDIR /app
 COPY server/ ./server/
 
-# Create required directories and set ownership to node user
-# Chown is crucial here - we give the 'node' user control over the app directory
-RUN mkdir -p downloads && \
-    chown -R node:node /app
+# Create required directories
+RUN mkdir -p downloads
 
-# Switch to non-root user "node"
-USER node
+# Create entrypoint script to fix permissions and switch user at runtime
+# This allows the container to start as root, fix the volume permissions (which matches the host),
+# and then drop privileges to the 'node' user for security.
+RUN printf '#!/bin/sh\nchown -R node:node /app/downloads\nexec su-exec node "$@"' > /usr/local/bin/docker-entrypoint.sh && \
+    chmod +x /usr/local/bin/docker-entrypoint.sh
 
 WORKDIR /app/server
 
@@ -28,6 +29,9 @@ WORKDIR /app/server
 ENV HOST=0.0.0.0
 ENV NODE_ENV=production
 EXPOSE 3000
+
+# Use the entrypoint to handle permissions + user switching
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # Start the server
 CMD ["node", "src/index.js"]
