@@ -44,6 +44,6 @@
   },
   "homepage": "https://github.com/asta-dhbw/Terminal-Slide-Show#readme",
   "dependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.2.1"
   }
 }
