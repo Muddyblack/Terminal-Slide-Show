@@ -12,10 +12,28 @@ export class DateParser {
     return null;
   }
 
+  /**
+   * Parses a daily time window like `_11h-13h_` or `_8h30-17h45_`
+   * @param {string} filename
+   * @returns {{startMinutes: number, endMinutes: number}|null} Minutes since midnight
+   */
+  static parseTimeWindow(filename) {
+    const match = filename.match(/_(\d{1,2})h(\d{2})?-(\d{1,2})h(\d{2})?_/);
+    if (!match) return null;
+
+    const startMinutes = parseInt(match[1]) * 60 + parseInt(match[2] || 0);
+    const endMinutes = parseInt(match[3]) * 60 + parseInt(match[4] || 0);
+    if (startMinutes > 24 * 60 || endMinutes > 24 * 60) return null;
+
+    return { startMinutes, endMinutes };
+  }
+
   static parseFileName(filename) {
     const duration = this.parseDuration(filename);
-    const dateInfo = this.parseDates(filename);
-    return { ...dateInfo, duration };
+    const timeWindow = this.parseTimeWindow(filename);
+    // Strip the time window so its digits are not mistaken for a date
+    const dateInfo = this.parseDates(filename.replace(/_\d{1,2}h(?:\d{2})?-\d{1,2}h(?:\d{2})?_/, '_'));
+    return { ...dateInfo, duration, timeWindow };
   }
 
   static parseDates(filename) {

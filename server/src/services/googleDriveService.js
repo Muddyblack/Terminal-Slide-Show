@@ -169,7 +169,7 @@ export class GoogleDriveService {
    */
   async listFiles() {
     const files = await this.fetchFilesFromDrive();
-    const validFiles = files.filter(file => isValidFile(file.name));
+    const validFiles = files.filter(file => isValidFile(file.name, { ignoreTime: true }));
     return validFiles;
   }
 

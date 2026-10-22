@@ -94,14 +94,17 @@ Name files in Drive to control when and how long they show:
 | `name_DD-MM-YYYY@DD-MM-YYYY.ext` | Date range |
 | `name_DD-MM@DD-MM.ext` | Date range, every year |
 | `name_10s_.ext` | Show for 10 seconds |
+| `name_11h-13h_.ext` | Show only between 11:00 and 13:00 every day |
+| `name_8h30-17h45_.ext` | Minutes are optional: 08:30 to 17:45 |
 
-Years may be two digits, and `-`, `.` or `_` work as separators. Duration and dates can be combined. The `_` on both sides of the duration is required.
+Years may be two digits, and `-`, `.` or `_` work as separators. Duration, time window and dates can be combined. The `_` on both sides of the duration and time window is required. A time window may cross midnight (`22h-2h`), and without a date it applies every day.
 
 ```
 banner_01-01-2024@31-01-2024.jpg   January 2024 only
 event_01-06@15-06.jpg              June 1-15, any year
 image_5s_25-12-2024.jpg            works
 image5s_25-12-2024.jpg             ignored, missing leading _
+lunch_11h-13h_01-06@15-06.jpg      June 1-15, lunchtime only
 ```
 
 ## Kiosk mode
