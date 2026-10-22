@@ -44,23 +44,10 @@ const defaults = {
     scopes: ['https://www.googleapis.com/auth/drive.readonly'], // Google Drive API scopes
     apiVersion: 'v3' // Google Drive API version
   },
-  display: {
-    // What the display does outside operating hours (terminal mode):
-    // 'black' shows a black screen, 'power' also cuts the HDMI output
-    offMode: process.env.DISPLAY_OFF_MODE === 'power' ? 'power' : 'black',
-  },
   sync: {
     interval: 1000, // Default sync interval in milliseconds
     retryAttempts: 3, // Number of retry attempts for failed syncs
 },
-  kiosk: {
-    targetUrl: process.env.KIOSK_URL, // Target URL for the kiosk
-    user: process.env.KIOSK_USER || 'kiosk',                         
-    password: process.env.KIOSK_PASSWORD,
-  },
-  backendPowerSaving: {
-    timeout: 5 * 60 * 1000 // standard 5 minutes in milliseconds
-  },
   paths: {
     // Resolved against the working directory, so absolute paths work too
     downloadPath: process.env.DOWNLOAD_PATH || '../downloads', // Where Google Drive files are stored
