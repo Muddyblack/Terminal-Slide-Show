@@ -1,6 +1,24 @@
 export const frontendConfig = {
     info: {
-        location: "Friedrichshafen", // Location setting for geolocation services
+        location: "Friedrichshafen", // Name shown on screen; also used to find the weather position if no coordinates are set
+        latitude: null, // Optional. With longitude, skips the name lookup for the weather
+        longitude: null,
+        elevation: null, // Optional, metres above sea level, improves the temperature
+    },
+    locale: {
+        language: 'de', // 'de' or 'en': date format, texts and bundled quotes, facts and greetings
+        units: 'metric', // 'metric' (°C, km/h) or 'imperial' (°F, mph)
+    },
+    dailyView: { // Parts of the daily view; set to false to hide one
+        weather: true,
+        nasa: true,
+        quote: true,
+        fact: true,
+        greeting: true,
+    },
+    branding: {
+        logo: '/slideshow.png', // Image shown in the daily view
+        logoAlt: 'Logo',
     },
     slideshow: {
         watchInterval: 1000, // Interval for watching media files in downloadPath in milliseconds
