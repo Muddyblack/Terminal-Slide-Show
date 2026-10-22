@@ -202,7 +202,8 @@ optimize_system() {
     done
 
     # Reduce memory usage
-    echo "vm.swappiness=10" | sudo tee -a /etc/sysctl.conf
+    echo "vm.swappiness=10" | sudo tee /etc/sysctl.d/99-kiosk.conf > /dev/null
+    sudo sysctl -q -p /etc/sysctl.d/99-kiosk.conf
 }
 
 # -----------------------------------------------------------------------------
