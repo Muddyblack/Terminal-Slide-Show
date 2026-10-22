@@ -1,0 +1,7 @@
+---
+# Applies the role to the device it runs on (first boot, called by firstboot.sh)
+- name: Provision this device
+  hosts: all
+  become: false
+  roles:
+    - muddyblack.terminal_slideshow.slideshow
