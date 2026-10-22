@@ -59,11 +59,6 @@ async function initialize() {
     }
 }
 
-const handleClientActivity = (req, res, next) => {
-    next();
-};
-
-
 // Static File Serving
 /* ------------------------------------ */
 
@@ -95,30 +90,17 @@ app.use('/media', express.static(path.join(process.cwd(), config.paths.downloadP
 /* ------------------------------------ */
 
 /**
- * CORS configuration middleware
- */
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*'); // Allow any origin in development
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-    next();
-});
-
-/**
  * Security headers middleware
  */
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
     next();
 });
 
 
 // Core API Routes
 /* ------------------------------------ */
-
-app.use('/api', handleClientActivity);
 
 app.use('/api', (req, res, next) => {
     if (!req.headers['x-client-id']) {
@@ -323,11 +305,6 @@ async function fetchWeather(location) {
 
 // Serve index.html for all other routes (SPA support)
 app.get('*', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'client', 'index.html'));
-});
-
-app.get('/dynamic-view', (req, res) => {
-    logger.debug('Serving dynamic view');
     res.sendFile(path.join(process.cwd(), 'client', 'index.html'));
 });
 
