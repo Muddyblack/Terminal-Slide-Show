@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python3 -m unittest tools/test_sdcard.py
+      - run: python3 -m unittest tools/test_sdcard.py tools/test_setup.py
       - run: shellcheck tools/sdcard/firstboot.sh
 
   ansible:
