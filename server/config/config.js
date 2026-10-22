@@ -30,6 +30,7 @@ function loadOverrides() {
 const defaults = {
   ...frontendConfig,
   info: {
+    ...frontendConfig.info,
     location: process.env.LOCATION || frontendConfig.info.location,
   },
   apiKeys: {
@@ -63,7 +64,7 @@ const defaults = {
   paths: {
     // Resolved against the working directory, so absolute paths work too
     downloadPath: process.env.DOWNLOAD_PATH || '../downloads', // Where Google Drive files are stored
-    dataPath: process.env.DATA_PATH || join(__dirname, '../data'), // Quotes, facts and greetings
+    dataPath: process.env.DATA_PATH || join(__dirname, '../data'), // Quotes, facts and greetings, per language
     clientDist: process.env.CLIENT_DIST || join(__dirname, '../../client/dist'), // Built frontend, if served by this backend
   },
   logging: {

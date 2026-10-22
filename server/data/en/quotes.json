@@ -1,0 +1,316 @@
+{
+  "quotes": [
+    {
+      "text": "The lake is the soul of the landscape.",
+      "author": "Hermann Hesse",
+      "tags": [
+        "natur",
+        "bodensee"
+      ]
+    },
+    {
+      "text": "Innovation distinguishes between a leader and a follower.",
+      "author": "Steve Jobs",
+      "tags": [
+        "innovation",
+        "führung"
+      ]
+    },
+    {
+      "text": "Those who stop getting better have stopped being good.",
+      "author": "Philip Rosenthal",
+      "tags": [
+        "entwicklung",
+        "motivation"
+      ]
+    },
+    {
+      "text": "The beautiful thing about learning is that nobody can take it away from you.",
+      "author": "B.B. King",
+      "tags": [
+        "bildung",
+        "lernen"
+      ]
+    },
+    {
+      "text": "The only way of discovering the limits of the possible is to venture past them into the impossible.",
+      "author": "Arthur C. Clarke",
+      "tags": [
+        "motivation",
+        "grenzen"
+      ]
+    },
+    {
+      "text": "The difference between the impossible and the possible lies in determination.",
+      "author": "Tommy Lasorda",
+      "tags": [
+        "entschlossenheit",
+        "motivation"
+      ]
+    },
+    {
+      "text": "Nothing is as constant as change.",
+      "author": "Heraklit",
+      "tags": [
+        "wandel",
+        "philosophie"
+      ]
+    },
+    {
+      "text": "The future belongs to those who believe in the beauty of their dreams.",
+      "author": "Eleanor Roosevelt",
+      "tags": [
+        "zukunft",
+        "träume"
+      ]
+    },
+    {
+      "text": "A problem is a chance for you to do your best.",
+      "author": "Duke Ellington",
+      "tags": [
+        "probleme",
+        "chancen"
+      ]
+    },
+    {
+      "text": "The only way to do great work is to love what you do.",
+      "author": "Steve Jobs",
+      "tags": [
+        "arbeit",
+        "leidenschaft"
+      ]
+    },
+    {
+      "text": "Those who set goals live longer.",
+      "author": "Hans-Jürgen Quadbeck-Seeger",
+      "tags": [
+        "ziele",
+        "leben"
+      ]
+    },
+    {
+      "text": "Time is not a highway between cradle and grave, but a place to park in the sun.",
+      "author": "Phil Bosmans",
+      "tags": [
+        "zeit",
+        "leben"
+      ]
+    },
+    {
+      "text": "The secret of getting ahead is getting started.",
+      "author": "Mark Twain",
+      "tags": [
+        "erfolg",
+        "anfang"
+      ]
+    },
+    {
+      "text": "All progress begins with the decision to try.",
+      "author": "Unbekannt",
+      "tags": [
+        "fortschritt",
+        "entscheidung"
+      ]
+    },
+    {
+      "text": "Human dignity lies in choice.",
+      "author": "Max Frisch",
+      "tags": [
+        "würde",
+        "entscheidung"
+      ]
+    },
+    {
+      "text": "What we know is a drop, what we don't know is an ocean.",
+      "author": "Isaac Newton",
+      "tags": [
+        "wissen",
+        "demut"
+      ]
+    },
+    {
+      "text": "The greatest discovery of my generation is that human beings can alter their lives by altering their attitudes.",
+      "author": "William James",
+      "tags": [
+        "einstellung",
+        "veränderung"
+      ]
+    },
+    {
+      "text": "One should always think bigger than oneself.",
+      "author": "Friedrich Dürrenmatt",
+      "tags": [
+        "denken",
+        "potenzial"
+      ]
+    },
+    {
+      "text": "Creativity is intelligence having fun.",
+      "author": "Albert Einstein",
+      "tags": [
+        "kreativität",
+        "intelligenz"
+      ]
+    },
+    {
+      "text": "As for the future, your task is not to foresee it, but to enable it.",
+      "author": "Antoine de Saint-Exupéry",
+      "tags": [
+        "zukunft",
+        "handeln"
+      ]
+    },
+    {
+      "text": "The best way to have a good idea is to have a lot of ideas.",
+      "author": "Linus Pauling",
+      "tags": [
+        "innovation",
+        "ideen"
+      ]
+    },
+    {
+      "text": "Those who remember their roots have good chances to grow.",
+      "author": "Fred Ammon",
+      "tags": [
+        "wachstum",
+        "tradition"
+      ]
+    },
+    {
+      "text": "Life isn't about waiting for the storm to pass, it's about learning to dance in the rain.",
+      "author": "Unbekannt",
+      "tags": [
+        "leben",
+        "anpassung"
+      ]
+    },
+    {
+      "text": "Success is not final, failure is not fatal: it is the courage to continue that counts.",
+      "author": "Winston Churchill",
+      "tags": [
+        "erfolg",
+        "mut"
+      ]
+    },
+    {
+      "text": "The shortest distance between two people is a smile.",
+      "author": "Charles Chaplin",
+      "tags": [
+        "menschen",
+        "freundlichkeit"
+      ]
+    },
+    {
+      "text": "If you make a mistake and do not correct it, this is called a mistake.",
+      "author": "Konfuzius",
+      "tags": [
+        "fehler",
+        "lernen"
+      ]
+    },
+    {
+      "text": "The quality of your thoughts determines the quality of your life.",
+      "author": "Marcus Aurelius",
+      "tags": [
+        "gedanken",
+        "leben"
+      ]
+    },
+    {
+      "text": "An ounce of practice is worth more than a ton of theory.",
+      "author": "Deutsches Sprichwort",
+      "tags": [
+        "praxis",
+        "erfahrung"
+      ]
+    },
+    {
+      "text": "Today's technology was yesterday's magic.",
+      "author": "Christopher Stasheff",
+      "tags": [
+        "technologie",
+        "fortschritt"
+      ]
+    },
+    {
+      "text": "Progress lives from the exchange of knowledge.",
+      "author": "Albert Einstein",
+      "tags": [
+        "wissen",
+        "fortschritt"
+      ]
+    },
+    {
+      "text": "A journey of a thousand miles begins with a single step.",
+      "author": "Laozi",
+      "tags": [
+        "anfang",
+        "reise"
+      ]
+    },
+    {
+      "text": "Simplicity is the ultimate sophistication.",
+      "author": "Leonardo da Vinci",
+      "tags": [
+        "einfachheit",
+        "design"
+      ]
+    },
+    {
+      "text": "If you want to go fast, go alone. If you want to go far, go together.",
+      "author": "Afrikanisches Sprichwort",
+      "tags": [
+        "gemeinschaft",
+        "erfolg"
+      ]
+    },
+    {
+      "text": "The best preparation for tomorrow is doing your best today.",
+      "author": "H. Jackson Brown Jr.",
+      "tags": [
+        "vorbereitung",
+        "leistung"
+      ]
+    },
+    {
+      "text": "The horizon is not a border.",
+      "author": "Unbekannt",
+      "tags": [
+        "horizont",
+        "möglichkeiten"
+      ]
+    },
+    {
+      "text": "Anyone who stops learning is old, whether at twenty or eighty.",
+      "author": "Henry Ford",
+      "tags": [
+        "lernen",
+        "alter"
+      ]
+    },
+    {
+      "text": "The greatest difficulties lie where we search for them.",
+      "author": "Johann Wolfgang von Goethe",
+      "tags": [
+        "probleme",
+        "perspektive"
+      ]
+    },
+    {
+      "text": "The optimist sees opportunity in every danger, the pessimist sees danger in every opportunity.",
+      "author": "Winston Churchill",
+      "tags": [
+        "optimismus",
+        "perspektive"
+      ]
+    },
+    {
+      "text": "Innovation is the only way to beat the competition.",
+      "author": "Robert Noyce",
+      "tags": [
+        "innovation",
+        "wettbewerb"
+      ]
+    }
+  ]
+}
