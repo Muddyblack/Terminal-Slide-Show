@@ -1,0 +1,10 @@
+# Managed by Ansible
+[Unit]
+Description=Reboot every day at {{ slideshow_daily_reboot }}
+
+[Timer]
+OnCalendar=*-*-* {{ slideshow_daily_reboot }}:00
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

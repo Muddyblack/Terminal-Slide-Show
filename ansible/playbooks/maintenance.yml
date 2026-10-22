@@ -1,0 +1,41 @@
+---
+# For devices with slideshow_readonly_root: unlocks the read-only root, applies the
+# role and all OS updates, then locks it again. EXPERIMENTAL, test on one device first.
+#   ansible-playbook muddyblack.terminal_slideshow.maintenance --limit lobby
+- name: Unlock the root filesystem
+  hosts: slideshow
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  tasks:
+    - name: Check whether the root is read-only
+      ansible.builtin.command: findmnt --noheadings --output FSTYPE /
+      register: maint_fstype
+      changed_when: false
+
+    - name: Disable the overlay
+      ansible.builtin.command: "raspi-config nonint {{ item }}"
+      loop: [disable_overlayfs, disable_bootro]
+      changed_when: true
+      when: maint_fstype.stdout | trim == 'overlay'
+
+    - name: Forget that the overlay was enabled
+      ansible.builtin.file:
+        path: /etc/terminal-slideshow/.readonly-enabled
+        state: absent
+      when: maint_fstype.stdout | trim == 'overlay'
+
+    - name: Reboot into the writable root
+      ansible.builtin.reboot:
+        reboot_timeout: 300
+      when: maint_fstype.stdout | trim == 'overlay'
+
+    - name: Install all OS updates
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: dist
+
+    # The role enables the overlay again at its end and reboots
+    - name: Apply the role and lock the device
+      ansible.builtin.include_role:
+        name: muddyblack.terminal_slideshow.slideshow

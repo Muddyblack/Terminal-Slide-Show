@@ -1,0 +1,63 @@
+---
+- name: Authorize the admin SSH keys
+  ansible.posix.authorized_key:
+    user: "{{ slideshow_admin_user }}"
+    key: "{{ item }}"
+    state: present
+  loop: "{{ slideshow_admin_ssh_keys }}"
+  loop_control:
+    label: "{{ item.split(' ')[-1] if ' ' in item else 'key' }}"
+  when: slideshow_admin_user | length > 0
+
+- name: Let the admin user run commands with sudo without a password (key login only)
+  ansible.builtin.copy:
+    content: "{{ slideshow_admin_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    dest: /etc/sudoers.d/90-slideshow-admin
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+  when: slideshow_harden_ssh | bool
+
+- name: Harden SSH
+  when: slideshow_harden_ssh | bool
+  block:
+    - name: Write the SSH hardening config
+      ansible.builtin.template:
+        src: sshd-hardening.conf.j2
+        dest: /etc/ssh/sshd_config.d/10-slideshow.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reload sshd
+
+    - name: Check the SSH config
+      ansible.builtin.command: /usr/sbin/sshd -t
+      changed_when: false
+  rescue:
+    - name: Remove the SSH config that failed the check
+      ansible.builtin.file:
+        path: /etc/ssh/sshd_config.d/10-slideshow.conf
+        state: absent
+
+    - name: Stop, SSH hardening was not applied
+      ansible.builtin.fail:
+        msg: The SSH hardening config failed "sshd -t" and was removed, SSH is unchanged.
+
+- name: Set up the firewall
+  when: slideshow_firewall | bool
+  block:
+    - name: Write the firewall rules
+      ansible.builtin.template:
+        src: nftables.conf.j2
+        dest: /etc/nftables.conf
+        owner: root
+        group: root
+        mode: "0644"
+        validate: /usr/sbin/nft --check --file %s
+      notify: Reload nftables
+
+    - name: Enable the firewall
+      ansible.builtin.systemd_service:
+        name: nftables
+        enabled: true

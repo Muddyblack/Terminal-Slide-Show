@@ -1,0 +1,46 @@
+---
+argument_specs:
+  main:
+    short_description: Terminal Slide Show device
+    options:
+      slideshow_version:
+        type: str
+        description: Release to run (Git tag without the "v"). Required when the device runs the backend.
+      slideshow_release_sha256:
+        type: str
+      slideshow_display_mode:
+        type: str
+        choices: [browser, mpv, none]
+      slideshow_backend_mode:
+        type: str
+        choices: [local, remote]
+      slideshow_backend_url:
+        type: str
+      slideshow_backend_port:
+        type: int
+      slideshow_settings:
+        type: dict
+      slideshow_settings_override:
+        type: dict
+      slideshow_harden_ssh:
+        type: bool
+      slideshow_admin_ssh_keys:
+        type: list
+        elements: str
+      slideshow_ssh_allowed_cidrs:
+        type: list
+        elements: str
+      slideshow_backend_allowed_cidrs:
+        type: list
+        elements: str
+      slideshow_display_power_method:
+        type: str
+        choices: [none, vcgencmd, wlr-randr, cec, command]
+      slideshow_updates:
+        type: str
+        choices: [security, all, none]
+      slideshow_daily_reboot:
+        type: str
+        description: HH:MM, or empty for no daily reboot.
+      slideshow_reboot_if_required:
+        type: str

@@ -1,0 +1,22 @@
+---
+- name: Wait for the backend to answer
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ slideshow_backend_port }}/api/server-status"
+    status_code: 200
+  register: slideshow_health
+  until: slideshow_health.status == 200
+  retries: 12
+  delay: 5
+  changed_when: false
+  check_mode: false
+  when: slideshow_backend_mode == 'local'
+
+- name: Check that the display service is running
+  ansible.builtin.systemd_service:
+    name: slideshow-display
+  register: slideshow_display_state
+  until: slideshow_display_state.status.ActiveState == 'active'
+  retries: 6
+  delay: 5
+  check_mode: false
+  when: slideshow_display_mode != 'none'
