@@ -1,3 +1,5 @@
+@reference './index.css';
+
 .daily-view {
   position: fixed;
   inset: 0;
