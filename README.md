@@ -41,6 +41,8 @@ The client runs on <http://localhost:5173>, the API on port 3000.
 
 ### Raspberry Pi fleet
 
+**New here?** Follow the step-by-step guide: [Deutsch](docs/ANLEITUNG.md) or [English](docs/SETUP.md). A wizard (`tools/slideshow-setup`) asks the questions and sets everything up, on Windows (WSL2), macOS and Linux.
+
 For real displays, use the Ansible collection in [`ansible/`](ansible/README.md). It sets up and maintains Raspberry Pi 3, 4 and 5 (Raspberry Pi OS Lite) from an inventory in your own repository: per-site and per-device settings, a hardened and firewalled system, checksum-verified releases, rolling updates with health checks, automatic security updates and an optional daily reboot. Each Pi shows the full daily view in Chromium or plays just the media with MPV, and either can use a central server instead of running its own backend. `tools/slideshow-sdcard` prepares a ready-to-boot SD card in one command: put it in a blank Pi and it sets itself up.
 
 ### Docker

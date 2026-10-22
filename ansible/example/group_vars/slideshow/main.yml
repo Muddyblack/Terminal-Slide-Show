@@ -29,7 +29,7 @@ slideshow_settings:
     days: [1, 2, 3, 4, 5]
     vacationPeriods: []
   locale:
-    language: en       # de | en
+    language: de       # de | en
     units: metric      # metric | imperial
   dailyView:
     nasa: true

@@ -17,6 +17,8 @@ Start from [`example/`](example/): it is a complete, working layout.
 
 ## Quick start
 
+The easiest way is the guided setup: `tools/slideshow-setup` asks a few questions, creates the fleet repository below (with the secrets encrypted) and offers to prepare the SD cards. A step-by-step guide for Windows (WSL2), macOS and Linux is in [docs/ANLEITUNG.md](../docs/ANLEITUNG.md) (Deutsch) and [docs/SETUP.md](../docs/SETUP.md) (English). The rest of this page describes what it creates, for people who prefer to do it by hand.
+
 There are two ways to get a Pi going. The SD card tool is the easiest: one command, and the card sets the Pi up by itself on its first boot.
 
 ### Option A: a ready-to-boot SD card (recommended)
