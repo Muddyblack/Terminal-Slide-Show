@@ -1,6 +1,9 @@
 import dotenv from 'dotenv';
+import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+
+import { deepMerge } from '../src/utils/deepMerge.js';
 
 import { frontendConfig } from './frontend.config.js';
 
@@ -10,10 +13,24 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Load .env from the same directory as config.js
 dotenv.config({ path: join(__dirname, '.env') });
 
-export const config = {
+/**
+ * Optional JSON file with per-device settings, merged over the defaults below.
+ * Lets one build serve many devices (schedule, location, display behaviour, ...).
+ */
+function loadOverrides() {
+  const file = process.env.SLIDESHOW_CONFIG;
+  if (!file) return {};
+  try {
+    return JSON.parse(readFileSync(file, 'utf8'));
+  } catch (error) {
+    throw new Error(`Cannot load SLIDESHOW_CONFIG (${file}): ${error.message}`);
+  }
+}
+
+const defaults = {
   ...frontendConfig,
   info: {
-    location: process.env.LOCATION || 'LOCATION',
+    location: process.env.LOCATION || frontendConfig.info.location,
   },
   apiKeys: {
     NASA_API_KEY: process.env.NASA_API_KEY
@@ -62,5 +79,15 @@ export const config = {
     host: process.env.FRONTEND_HOST || '127.0.0.1'
   },
 };
+
+export const config = deepMerge(defaults, loadOverrides());
+
+/**
+ * The part of the config the browser needs, served at /config.js
+ * so it can differ per device without rebuilding the frontend.
+ */
+export const publicConfig = Object.fromEntries(
+  Object.keys(frontendConfig).map((key) => [key, config[key]])
+);
 
 export default config;

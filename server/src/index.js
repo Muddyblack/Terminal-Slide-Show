@@ -1,4 +1,4 @@
-import { config } from '../config/config.js';
+import { config, publicConfig } from '../config/config.js';
 
 
 import express from 'express';
@@ -58,6 +58,19 @@ async function initialize() {
         process.exit(1);
     }
 }
+
+// Runtime frontend config
+/* ------------------------------------ */
+
+/**
+ * Per-device settings for the browser, loaded before the app starts.
+ * Never cached: a changed schedule must show up on the next page load.
+ */
+app.get('/config.js', (req, res) => {
+    res.type('application/javascript');
+    res.set('Cache-Control', 'no-cache');
+    res.send(`window.__SLIDESHOW_CONFIG__ = ${JSON.stringify(publicConfig)};`);
+});
 
 // Static File Serving
 /* ------------------------------------ */
