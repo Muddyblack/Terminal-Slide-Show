@@ -1,0 +1,16 @@
+[Unit]
+Description=Terminal Slide Show first-boot setup
+After=network-online.target cloud-final.service
+Wants=network-online.target
+ConditionPathExists=!/var/lib/slideshow-provision/done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/slideshow-firstboot
+RemainAfterExit=no
+Restart=on-failure
+RestartSec=60
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target
