@@ -1,0 +1,40 @@
+---
+# Settings shared by every device. Per-site and per-device values override these.
+
+# --- What runs ---------------------------------------------------------------
+slideshow_version: "0.1.0"
+# Pin the checksum of that release (printed by the release workflow, or in the
+# .sha256 file next to the download). Strongly recommended.
+slideshow_release_sha256: ""
+
+# --- Access ------------------------------------------------------------------
+slideshow_admin_user: admin
+slideshow_admin_ssh_keys:
+  - "ssh-ed25519 AAAA...replace-with-your-public-key you@laptop"
+# Only your VPN range (or office network) may reach SSH
+slideshow_ssh_allowed_cidrs:
+  - 192.168.10.0/24
+  - 100.64.0.0/10      # Tailscale
+
+# --- What the screens show -----------------------------------------------------
+slideshow_settings:
+  schedule:
+    enabled: true
+    onTime: "07:30"
+    offTime: "19:30"
+    days: [1, 2, 3, 4, 5]
+    vacationPeriods: []
+  locale:
+    language: en       # de | en
+    units: metric      # metric | imperial
+  dailyView:
+    nasa: true
+    weather: true
+    quote: true
+    fact: true
+    greeting: true
+
+# --- Upkeep -------------------------------------------------------------------
+slideshow_updates: security        # security | all | none
+slideshow_daily_reboot: "04:15"    # applies kernel and firmware updates; "" to turn off
+slideshow_watchdog: true
