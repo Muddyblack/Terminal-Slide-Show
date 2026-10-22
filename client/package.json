@@ -7,6 +7,7 @@
         "dev": "vite --host",
         "build": "vite build",
         "lint": "eslint . --fix",
+        "typecheck": "tsc --noEmit",
         "lint:strict": "eslint . --max-warnings 0",
         "preview": "vite preview --port 5173",
         "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",

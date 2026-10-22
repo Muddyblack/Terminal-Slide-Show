@@ -8,6 +8,15 @@
 # Version: 1.0
 
 # -----------------------------------------------------------------------------
+# Pre-flight check
+# -----------------------------------------------------------------------------
+# Refuse to pull over local changes instead of silently stashing them
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "Uncommitted changes found - commit or stash them first" >&2
+    exit 1
+fi
+
+# -----------------------------------------------------------------------------
 # Container cleanup
 # -----------------------------------------------------------------------------
 docker compose down
@@ -23,8 +32,7 @@ git config merge.commit no-edit
 # -----------------------------------------------------------------------------
 # Update repository
 # -----------------------------------------------------------------------------
-# Stash changes, pull updates, and ensure script remains executable
-git stash && git pull --no-edit && chmod +x docker.sh
+git pull --no-edit && chmod +x docker.sh
 
 # -----------------------------------------------------------------------------
 # Container management

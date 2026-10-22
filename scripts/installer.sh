@@ -54,7 +54,11 @@ load_config() {
 
     # Set defaults if values not found
     KIOSK_USERNAME="${KIOSK_USER:-kiosk}"
-    PASSWORD="${KIOSK_PASSWORD:-!SECURE@PASSWORD!}"
+    PASSWORD="$KIOSK_PASSWORD"
+    if [ -z "$PASSWORD" ]; then
+        log_error "KIOSK_PASSWORD is not set in $config_file - refusing to create a user with a default password"
+        return 1
+    fi
     TARGET_URL="${TARGET_URL:-https://www.google.com}"
 }
 
@@ -198,7 +202,8 @@ optimize_system() {
     done
 
     # Reduce memory usage
-    echo "vm.swappiness=10" | sudo tee -a /etc/sysctl.conf
+    echo "vm.swappiness=10" | sudo tee /etc/sysctl.d/99-kiosk.conf > /dev/null
+    sudo sysctl -q -p /etc/sysctl.d/99-kiosk.conf
 }
 
 # -----------------------------------------------------------------------------
@@ -213,12 +218,12 @@ create_kiosk_user() {
     else
         log_info "Creating user: $username"
         sudo adduser --disabled-password --gecos "" "$username"
-        printf "%s:%s" "$username" "$password" | sudo chpasswd
+        printf "%s:%s\n" "$username" "$password" | sudo chpasswd
     fi
 
-    #for auto login sudoer is required
+    # Autologin does not need sudo, so the kiosk user stays unprivileged
     log_info "Adding user to required groups"
-    sudo usermod -aG netdev,video,audio,sudo "$username"
+    sudo usermod -aG netdev,video,audio "$username"
 }
 
 # -----------------------------------------------------------------------------
@@ -357,7 +362,7 @@ main() {
     check_sudo
 
     # Load configuration
-    load_config "$project_dir/server/config/.env"
+    load_config "$project_dir/server/config/.env" || exit 1
 
     # Select installation mode
     select_mode

@@ -8,6 +8,7 @@ import fetch from 'node-fetch';
 import { GoogleDriveService } from './services/googleDriveService.js';
 import { SlideshowManager } from './services/slideshowManager.js';
 import { Logger } from './utils/logger.js';
+import { cached } from './utils/ttlCache.js';
 import { createServer } from 'http';
 import { webSocketManager } from './services/webSocketManager.js';
 
@@ -58,11 +59,6 @@ async function initialize() {
     }
 }
 
-const handleClientActivity = (req, res, next) => {
-    next();
-};
-
-
 // Static File Serving
 /* ------------------------------------ */
 
@@ -81,63 +77,17 @@ const staticOptions = {
 
 app.use(express.static(path.join(process.cwd(), 'client', 'public'), staticOptions));
 app.use(express.static(path.join(process.cwd(), 'dist'), staticOptions));
-app.use('/media', (req, res, next) => {
-    // Cache for 1 year
-    res.set({
-        'Cache-Control': 'public, max-age=31536000',
-        'ETag': true
-    });
-    next();
-}, express.static(path.join(process.cwd(), config.paths.downloadPath)));
-
-// conditional requests for media files
-app.use('/media', (req, res, next) => {
-    (async () => {
-        try {
-            const mediaRoot = path.join(process.cwd(), config.paths.downloadPath);
-            // Decode URL-encoded characters (e.g., %20 -> space) before resolving file path
-            const decodedUrl = decodeURIComponent(req.url);
-            const filePath = path.resolve(mediaRoot, '.' + decodedUrl);
-
-            if (!filePath.startsWith(mediaRoot + path.sep)) {
-                return res.sendStatus(403);
-            }
-
-            // Generate ETag from file stats
-            const stats = await fs.stat(filePath);
-
-            const etag = `W/"${stats.size}-${stats.mtime.getTime()}"`;
-            res.set('ETag', etag);
-
-            // Check if client's cached version matches
-            if (req.headers['if-none-match'] === etag) {
-                return res.sendStatus(304); // Not Modified
-            }
-
-            res.set({
-                'Cache-Control': 'public, max-age=31536000',
-                'Last-Modified': stats.mtime.toUTCString()
-            });
-
-            next();
-        } catch (err) {
-            next();
-        }
-    })();
-}, express.static(path.join(process.cwd(), config.paths.downloadPath)));
+// Media files can be replaced under the same name, so always revalidate.
+// express.static generates ETag/Last-Modified, which makes revalidation cheap (304).
+app.use('/media', express.static(path.join(process.cwd(), config.paths.downloadPath), {
+    etag: true,
+    lastModified: true,
+    maxAge: 0,
+    setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache')
+}));
 
 // Security Middleware
 /* ------------------------------------ */
-
-/**
- * CORS configuration middleware
- */
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*'); // Allow any origin in development
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-    next();
-});
 
 /**
  * Security headers middleware
@@ -145,15 +95,12 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
     next();
 });
 
 
 // Core API Routes
 /* ------------------------------------ */
-
-app.use('/api', handleClientActivity);
 
 app.use('/api', (req, res, next) => {
     if (!req.headers['x-client-id']) {
@@ -259,28 +206,21 @@ app.get('/api/greetings', async (req, res) => {
  */
 app.get('/api/nasa-apod', async (req, res) => {
     logger.debug('Fetching NASA APOD');
+    if (!config.apiKeys.NASA_API_KEY) {
+        return res.status(503).json({ error: 'NASA_API_KEY is not configured' });
+    }
+
     try {
-        // Add cache headers
-        res.set({
-            'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
-            'ETag': true
+        // The picture changes once a day; one upstream request per hour is plenty
+        const data = await cached('nasa-apod', 60 * 60 * 1000, async () => {
+            const nasaResponse = await fetch(
+                `https://api.nasa.gov/planetary/apod?api_key=${config.apiKeys.NASA_API_KEY}`
+            );
+            if (!nasaResponse.ok) throw new Error(`NASA responded with ${nasaResponse.status}`);
+            return nasaResponse.json();
         });
 
-        // Check if client has cached version
-        const nasaResponse = await fetch(
-            `https://api.nasa.gov/planetary/apod?api_key=${config.apiKeys.NASA_API_KEY}`
-        );
-        const data = await nasaResponse.json();
-
-        // Generate ETag based on data
-        const etag = `W/"${Buffer.from(JSON.stringify(data)).length}"`;
-        res.set('ETag', etag);
-
-        // Return 304 if client has current version
-        if (req.headers['if-none-match'] === etag) {
-            return res.sendStatus(304);
-        }
-
+        res.set('Cache-Control', 'public, max-age=3600');
         res.json(data);
     } catch (error) {
         logger.error('Failed to fetch NASA APOD:', error);
@@ -294,55 +234,14 @@ app.get('/api/nasa-apod', async (req, res) => {
  * @param {string} req.query.location - Location to get weather for
  */
 app.get('/api/weather', async (req, res) => {
-    const location = req.query.location;
+    const location = req.query.location || config.info.location;
     logger.debug(`Fetching weather for location: ${location}`);
 
     try {
-        const geoResponse = await fetch(
-            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1`
-        );
-        const geoData = await geoResponse.json();
-
-        if (!geoData.results?.[0]) {
+        const enrichedResponse = await cached(`weather:${location}`, 10 * 60 * 1000, () => fetchWeather(location));
+        if (!enrichedResponse) {
             return res.status(404).json({ error: 'Location not found' });
         }
-
-        const { latitude, longitude, timezone } = geoData.results[0];
-
-        const weatherResponse = await fetch(
-            `https://api.open-meteo.com/v1/forecast?` +
-            `latitude=${latitude}&longitude=${longitude}&` +
-            `current=temperature_2m,is_day,rain,showers,snowfall,` +
-            `weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,` +
-            `wind_gusts_10m&timezone=${encodeURIComponent(timezone)}&forecast_days=1`
-        );
-
-        const weatherData = await weatherResponse.json();
-
-        const enrichedResponse = {
-            ...weatherData,
-            location: {
-                name: geoData.results[0].name,
-                timezone: timezone,
-                country: geoData.results[0].country,
-                latitude,
-                longitude
-            },
-            current_weather: {
-                temperature: weatherData.current.temperature_2m,
-                weathercode: weatherData.current.weather_code,
-                is_day: weatherData.current.is_day,
-                time: weatherData.current.time,
-                windspeed: weatherData.current.wind_speed_10m,
-                winddirection: weatherData.current.wind_direction_10m,
-                wind_gusts: weatherData.current.wind_gusts_10m,
-                cloud_cover: weatherData.current.cloud_cover,
-                rain: weatherData.current.rain,
-                showers: weatherData.current.showers,
-                snowfall: weatherData.current.snowfall
-            }
-        };
-
         res.json(enrichedResponse);
     } catch (error) {
         logger.error('Failed to fetch weather:', error);
@@ -350,13 +249,62 @@ app.get('/api/weather', async (req, res) => {
     }
 });
 
+/**
+ * Looks up a location and its current weather
+ * @param {string} location
+ * @returns {Promise<Object|null>} Weather data, or null when the location is unknown
+ */
+async function fetchWeather(location) {
+    const geoResponse = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1`
+    );
+    const geoData = await geoResponse.json();
+
+    if (!geoData.results?.[0]) {
+        return null;
+    }
+
+    const { latitude, longitude, timezone } = geoData.results[0];
+
+    const weatherResponse = await fetch(
+        `https://api.open-meteo.com/v1/forecast?` +
+        `latitude=${latitude}&longitude=${longitude}&` +
+        `current=temperature_2m,is_day,rain,showers,snowfall,` +
+        `weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,` +
+        `wind_gusts_10m&timezone=${encodeURIComponent(timezone)}&forecast_days=1`
+    );
+
+    const weatherData = await weatherResponse.json();
+
+    const enrichedResponse = {
+        ...weatherData,
+        location: {
+            name: geoData.results[0].name,
+            timezone: timezone,
+            country: geoData.results[0].country,
+            latitude,
+            longitude
+        },
+        current_weather: {
+            temperature: weatherData.current.temperature_2m,
+            weathercode: weatherData.current.weather_code,
+            is_day: weatherData.current.is_day,
+            time: weatherData.current.time,
+            windspeed: weatherData.current.wind_speed_10m,
+            winddirection: weatherData.current.wind_direction_10m,
+            wind_gusts: weatherData.current.wind_gusts_10m,
+            cloud_cover: weatherData.current.cloud_cover,
+            rain: weatherData.current.rain,
+            showers: weatherData.current.showers,
+            snowfall: weatherData.current.snowfall
+        }
+    };
+
+    return enrichedResponse;
+}
+
 // Serve index.html for all other routes (SPA support)
 app.get('*', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'client', 'index.html'));
-});
-
-app.get('/dynamic-view', (req, res) => {
-    logger.debug('Serving dynamic view');
     res.sendFile(path.join(process.cwd(), 'client', 'index.html'));
 });
 
@@ -375,10 +323,20 @@ initialize().then(() => {
     process.exit(1);
 });
 
-// Handle shutdown
-process.on('SIGINT', () => {
-    logger.info('Shutting down...');
+// Handle shutdown (SIGTERM is what `docker stop` and systemd send)
+let shuttingDown = false;
+const shutdown = (signal) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    logger.info(`${signal} received, shutting down...`);
     googleDriveService.stop();
     slideshowManager.stop();
-    process.exit(0);
-});
+    webSocketManager.stop();
+
+    // Stop accepting connections; force exit if something keeps the process alive
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 3000).unref();
+};
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));

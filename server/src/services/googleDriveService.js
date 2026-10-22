@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
 import fs from 'fs-extra';
 import path from 'path';
+import { pipeline } from 'stream/promises';
 import { Logger } from '../utils/logger.js';
 import { config } from '../../config/config.js';
 import { isValidFile } from '../utils/fileValidator.js';
@@ -169,7 +170,9 @@ export class GoogleDriveService {
    */
   async listFiles() {
     const files = await this.fetchFilesFromDrive();
-    const validFiles = files.filter(file => isValidFile(file.name, { ignoreTime: true }));
+    // Drive names may contain path separators; never let them leave the download folder
+    const validFiles = files.filter(file =>
+        path.basename(file.name) === file.name && isValidFile(file.name, { ignoreTime: true }));
     return validFiles;
   }
 
@@ -228,13 +231,17 @@ export class GoogleDriveService {
                     { fileId, alt: 'media' },
                     { responseType: 'stream' }
                 );
-                const dest = fs.createWriteStream(localPath);
-                response.data.pipe(dest);
-    
-                return new Promise((resolve, reject) => {
-                    dest.on('finish', resolve);
-                    dest.on('error', reject);
-                });
+                // Write to a temp file first so an interrupted download is never
+                // mistaken for a complete one by the next sync
+                const partPath = `${localPath}.part`;
+                try {
+                    await pipeline(response.data, fs.createWriteStream(partPath));
+                    await fs.move(partPath, localPath, { overwrite: true });
+                } catch (streamError) {
+                    await fs.remove(partPath);
+                    throw streamError;
+                }
+                return;
             } catch (error) {
                 attempt++;
                 this.logger.warn(`Download attempt ${attempt} failed for file ${fileId}: ${error.message}`);

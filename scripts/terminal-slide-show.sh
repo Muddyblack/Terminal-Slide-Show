@@ -24,7 +24,7 @@ cleanup() {
         kill $MPV_PID 2>/dev/null
     fi
     rm -f "$MPV_SOCKET"
-    pkill -f "npm run dev:backend"
+    pkill -f "node src/index.js"
     pkill -f "monitor_backend"
     pkill -f "inotifywait"
     tput cnorm
@@ -555,14 +555,17 @@ monitor_files() {
 
 # Run npm development server
 run_npm_commands() {
-    log_info "Installing npm dependencies..."
-    npm install || {
-        log_error "npm install failed"
+    local server_dir="$PROJECT_DIR/server"
+
+    log_info "Installing backend dependencies..."
+    npm ci --omit=dev --prefix "$server_dir" || {
+        log_error "npm ci failed"
         exit 1
     }
 
-    log_info "Starting development server..."
-    npm run dev:backend & # Run in background
+    # Production start: no file watcher restarting the server under the slideshow
+    log_info "Starting backend..."
+    (cd "$server_dir" && exec node src/index.js) & # Run in background
 }
 
 # Check backend API health

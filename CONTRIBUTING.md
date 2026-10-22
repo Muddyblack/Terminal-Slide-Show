@@ -16,7 +16,7 @@ npm run dev
 
 1. Fork the repo and branch from `master`.
 2. Keep changes focused; one topic per PR.
-3. Run `npm run lint` in `client/` before pushing.
+3. Run `npm test` in `server/` and `npm run typecheck` in `client/`, plus `npm run lint` in `client/`. CI runs the first two.
 4. Describe what changed and why, and include a screenshot for UI changes.
 
 ## Reporting bugs
