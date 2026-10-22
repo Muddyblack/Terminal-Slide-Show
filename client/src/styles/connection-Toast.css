@@ -1,10 +1,172 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@reference './index.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --animate-fade-in: fade-in 0.5s ease-out forwards;
+  --animate-spin-slow: spin 1.5s linear infinite;
+  --animate-blob: blob 3.5s infinite;
+  --animate-ping-slow: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+  --animate-draw: draw 1s ease infinite;
+  --animate-fill-in: fillIn 0.25s ease forwards;
+  --animate-temperature-pulse: temperature-pulse 3s ease-in-out infinite;
+  --animate-wind-sway: wind-sway 2s ease-in-out infinite;
+  --animate-weather-float: weather-float 4s ease-in-out infinite;
+  --animate-shooting-star: shoot 3s linear infinite;
+  --animate-float: float 4s ease-in-out infinite;
+  --animate-pulse-soft: pulse 4s ease-in-out infinite;
+
+  --stroke-width-4: 4;
+
+  --color-primary: #135d7b;
+  --color-accent: #55dcf5;
+
+  --drop-shadow-primary-glow: 0 0 8px rgba(19, 93, 123, 0.6);
+  --drop-shadow-accent-glow: 0 0 8px rgba(85, 220, 245, 0.6);
+
+  --background-image-weather-gradient: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.2),
+    rgba(255, 255, 255, 0.1)
+  );
+  --background-image-day-gradient: linear-gradient(
+    135deg,
+    #1a2a6c,
+    #b21f1f,
+    #fdbb2d
+  );
+  --background-image-night-gradient: linear-gradient(
+    135deg,
+    #0f172a,
+    #1e293b,
+    #334155
+  );
+
+  @keyframes fade-in {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes spin-slow {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes blob {
+    0% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(30px, -50px) scale(1.1);
+    }
+    66% {
+      transform: translate(-20px, 20px) scale(0.9);
+    }
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+  }
+  @keyframes draw {
+    0% {
+      stroke-dashoffset: 1000;
+      fill-opacity: 0;
+    }
+    90% {
+      fill-opacity: 0;
+    }
+    100% {
+      stroke-dashoffset: 0;
+      fill-opacity: 1;
+    }
+  }
+  @keyframes fillIn {
+    0% {
+      fill-opacity: 0;
+    }
+    100% {
+      fill-opacity: 1;
+    }
+  }
+  @keyframes temperature-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+  }
+  @keyframes wind-sway {
+    0%,
+    100% {
+      transform: rotate(0deg);
+    }
+    50% {
+      transform: rotate(5deg);
+    }
+  }
+  @keyframes weather-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+  @keyframes shoot {
+    0% {
+      transform: translateX(-100%) translateY(0);
+      opacity: 1;
+    }
+    70% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(200%) translateY(100%);
+      opacity: 0;
+    }
+  }
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
 
 .connection-toast {
   @apply fixed bottom-4 right-4 z-50 
-         bg-black/70 backdrop-blur border border-white/10
+         bg-black/70 backdrop-blur-sm border border-white/10
          rounded-lg p-3 flex items-center gap-3;
 }
 
