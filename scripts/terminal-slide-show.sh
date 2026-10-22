@@ -69,7 +69,8 @@ parse_config() {
                     backend_port: Number(config.backend.port),
                     backend_host: String(config.backend.host),
                     vacation_periods: config.schedule.vacationPeriods,
-                    paths_downloadPath: String(config.paths.downloadPath)
+                    paths_downloadPath: String(config.paths.downloadPath),
+                    display_off_mode: String(config.display?.offMode || 'black')
                 }, null, 2));
             })
             .catch(error => {
@@ -93,6 +94,7 @@ parse_config() {
         BACKEND_HOST=$(echo "$config_values" | jq -r '.backend_host // "127.0.0.1"')
         VACATION_PERIODS=$(echo "$config_values" | jq -r '.vacation_periods // []')
         DOWNLOAD_PATH=$(echo "$config_values" | jq -r '.paths_downloadPath // "'"$DEFAULT_DOWNLOAD_PATH"'"')
+        DISPLAY_OFF_MODE=$(echo "$config_values" | jq -r '.display_off_mode // "black"')
     else
         log_error "No config values returned"
         # Set default values
@@ -104,6 +106,7 @@ parse_config() {
         BACKEND_HOST="127.0.0.1"
         VACATION_PERIODS="[]"
         DOWNLOAD_PATH="$DEFAULT_DOWNLOAD_PATH"
+        DISPLAY_OFF_MODE="black"
     fi
     
     log_info "Configuration loaded: Schedule enabled: $SCHEDULE_ENABLED, On time: $ON_TIME, Off time: $OFF_TIME, download path: $DOWNLOAD_PATH"
@@ -175,6 +178,53 @@ is_operating_hours() {
     fi
 }
 
+# Switch the HDMI output on or off (DISPLAY_OFF_MODE=power).
+# Uses vcgencmd (Raspberry Pi) or xrandr (X session). Returns 1 if neither works.
+set_display_power() {
+    local state="$1" # on|off
+    local output
+
+    if command -v vcgencmd >/dev/null 2>&1; then
+        local power=0
+        [ "$state" = "on" ] && power=1
+        vcgencmd display_power "$power" >/dev/null 2>&1
+        return $?
+    fi
+
+    if command -v xrandr >/dev/null 2>&1 && [ -n "$DISPLAY" ]; then
+        for output in $(xrandr --query | awk '/ connected/ {print $1}'); do
+            if [ "$state" = "on" ]; then
+                xrandr --output "$output" --auto
+            else
+                xrandr --output "$output" --off
+            fi
+        done
+        return 0
+    fi
+
+    return 1
+}
+
+# Cut the display after the black screen is up
+display_power_off() {
+    [ "$DISPLAY_OFF_MODE" = "power" ] || return 0
+    if set_display_power off; then
+        log_info "Display output switched off"
+    else
+        log_warn "No tool found to switch the display off (vcgencmd/xrandr), keeping black screen"
+    fi
+}
+
+# Wake the display. Some monitors need several attempts after being cut.
+display_power_on() {
+    [ "$DISPLAY_OFF_MODE" = "power" ] || return 0
+    local attempt
+    for attempt in 1 2 3; do
+        set_display_power on && log_info "Display output switched on (attempt $attempt)"
+        sleep 2
+    done
+}
+
 # Monitor and manage display state based on schedule
 check_display_state() {
     # Do initial state check and MPV start
@@ -186,6 +236,7 @@ check_display_state() {
         log_info "Outside operating hours - starting with black screen"
         CURRENT_STATE="off"
         start_mpv_black
+        display_power_off
     fi
 
     # Then continue with periodic checks
@@ -194,6 +245,7 @@ check_display_state() {
             if [ "$CURRENT_STATE" = "off" ]; then
                 log_info "Entering operating hours - starting slideshow"
                 CURRENT_STATE="on"
+                display_power_on
                 if [ -n "$MPV_PID" ]; then
                     kill $MPV_PID 2>/dev/null
                 fi
@@ -207,6 +259,7 @@ check_display_state() {
                     kill $MPV_PID 2>/dev/null
                 fi
                 start_mpv_black
+                display_power_off
             fi
         fi
         sleep 60

@@ -63,6 +63,7 @@ Secrets and per-machine values live in `server/config/.env`:
 | `KIOSK_URL`, `KIOSK_USER`, `KIOSK_PASSWORD` | Kiosk mode |
 | `BACKEND_HOST/PORT`, `FRONTEND_HOST/PORT` | Bind addresses |
 | `LOG_LEVEL` | `debug`, `info`, `warn` or `error` |
+| `DISPLAY_OFF_MODE` | Terminal mode, outside operating hours: `black` (default) or `power` to cut the HDMI output |
 
 Behaviour (slide duration, schedule, media types, WebSocket timings) is set in [`server/config/frontend.config.js`](server/config/frontend.config.js):
 
@@ -110,6 +111,8 @@ lunch_11h-13h_01-06@15-06.jpg      June 1-15, lunchtime only
 ## Kiosk mode
 
 `scripts/installer.sh` sets up a locked-down kiosk user with autologin on Debian-based systems, in either `web` (Chromium) or `terminal` (MPV) mode. `scripts/kiosk.sh` and `scripts/terminal-slide-show.sh` launch the display.
+
+In terminal mode the installer asks what the display should do outside operating hours: show a black screen, or also cut the HDMI output (`DISPLAY_OFF_MODE=power`). The output is switched with `vcgencmd display_power` on a Raspberry Pi, or `xrandr` in an X session, and is switched back on at the configured on-time. Some monitors do not wake reliably after the signal is cut, so test yours before relying on it. If no switching tool is found, it falls back to the black screen.
 
 ## API
 
