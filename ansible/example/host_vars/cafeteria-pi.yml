@@ -1,0 +1,8 @@
+---
+# A Pi 3 is happier with MPV (images and videos only)
+slideshow_display_mode: mpv
+# Different hours here: only the differences are listed
+slideshow_settings_override:
+  schedule:
+    onTime: "06:30"
+    offTime: "15:00"
