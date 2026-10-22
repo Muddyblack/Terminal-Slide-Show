@@ -17,6 +17,25 @@ Start from [`example/`](example/): it is a complete, working layout.
 
 ## Quick start
 
+There are two ways to get a Pi going. The SD card tool is the easiest: one command, and the card sets the Pi up by itself on its first boot.
+
+### Option A: a ready-to-boot SD card (recommended)
+
+After creating your fleet repo (steps 2 and 3 below), prepare a card for a device from your PC (Linux for now; needs `ansible`, `mtools` and `sudo`):
+
+```bash
+tools/slideshow-sdcard --fleet ~/my-fleet --host lobby-pi
+```
+
+It lists the removable disks, asks you to type the device name before it erases anything, downloads and verifies the latest Raspberry Pi OS Lite (64-bit), writes it, and adds the device's admin user and SSH key, Wi-Fi, time zone, settings and secrets plus a first-boot installer. Put the card in the Pi and power it on. A few minutes later (it needs internet) the Pi has installed everything, removed the secrets from the boot partition and rebooted into the slideshow. After that, you manage it like any other device with `site`, `update` and `status`.
+
+- It refuses any disk that holds your running system or is not removable. `--device /dev/sdb` skips the list (the confirmation still applies), and `--output lobby-pi.img` writes an image file instead of a card.
+- Wi-Fi and time zone come from the inventory (`slideshow_wifi` with `ssid`, `password` and `country`, and `slideshow_timezone`). Wi-Fi is only used for the card, never copied into the device's settings.
+- The device must be in the inventory with `slideshow_admin_user` and at least one key in `slideshow_admin_ssh_keys`. The admin account has no password, so to recover a device you reflash its card.
+- The card (and any `.img` file) holds the device's secrets until the first boot has finished, so treat it like a key.
+
+### Option B: flash with Raspberry Pi Imager and run Ansible
+
 1. **Flash each Pi** with Raspberry Pi Imager: *Raspberry Pi OS Lite (64-bit)*, set a hostname, create an admin user, enable SSH with **public-key authentication only**, and enter Wi-Fi if needed.
 2. **Create your fleet repo** from the example and install the collection:
    ```bash
@@ -134,6 +153,8 @@ What this setup does, and where it stops.
 
 ## What has and has not been tested
 
+The SD card tool's logic is unit-tested (disk selection, including that it never offers a disk that holds the running system, and the generated configuration), and its image mode was run end to end against a synthetic Raspberry Pi image with a real Ansible Vault: the device's secrets were decrypted into the bundle, Wi-Fi stayed out of it, and every file landed on the boot partition.
+
 The role passes `ansible-lint` (production profile) and a syntax check. Its templates render correctly and the generated firewall, SSH config, systemd units and shell scripts pass `nft --check`, `sshd -t`, `systemd-analyze verify` and `shellcheck`. The release tarball boots standalone, and the MPV player was run against a real backend and a real `mpv` (playing images and a video with the right timings, and staying black when the schedule is off).
 
-**Not yet run on a real Raspberry Pi:** the `cage`/Chromium start-up (the systemd session setup is the most likely thing to need a tweak), the MPV `drm` output, every screen power method, the read-only overlay, and the whole run end to end. Try it on one spare Pi before the fleet, and please report what you find.
+**Not yet run on a real Raspberry Pi or card:** writing to a physical SD card (`dd`, partition rescan, `mcopy` onto the card), the first-boot service and the cloud-init `write_files`/`runcmd` steps it depends on, the `cage`/Chromium start-up (the systemd session setup is the most likely thing to need a tweak), the MPV `drm` output, every screen power method, the read-only overlay, and the whole run end to end. Try it on one spare Pi before the fleet, and please report what you find.

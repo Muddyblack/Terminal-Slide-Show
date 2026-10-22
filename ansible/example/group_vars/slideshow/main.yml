@@ -16,6 +16,10 @@ slideshow_ssh_allowed_cidrs:
   - 192.168.10.0/24
   - 100.64.0.0/10      # Tailscale
 
+# --- Device basics -----------------------------------------------------------
+# The schedule runs on local time, so set the time zone
+slideshow_timezone: Europe/Berlin
+
 # --- What the screens show -----------------------------------------------------
 slideshow_settings:
   schedule:
