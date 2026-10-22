@@ -346,10 +346,20 @@ initialize().then(() => {
     process.exit(1);
 });
 
-// Handle shutdown
-process.on('SIGINT', () => {
-    logger.info('Shutting down...');
+// Handle shutdown (SIGTERM is what `docker stop` and systemd send)
+let shuttingDown = false;
+const shutdown = (signal) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    logger.info(`${signal} received, shutting down...`);
     googleDriveService.stop();
     slideshowManager.stop();
-    process.exit(0);
-});
+    webSocketManager.stop();
+
+    // Stop accepting connections; force exit if something keeps the process alive
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 3000).unref();
+};
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
