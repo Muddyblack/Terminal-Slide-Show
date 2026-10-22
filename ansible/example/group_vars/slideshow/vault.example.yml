@@ -12,4 +12,6 @@ slideshow_google_service_account: |
     "...": "paste the whole key file here"
   }
 
+vault_wifi_password: "wifi-password"
+
 slideshow_nasa_api_key: "get-one-at-api.nasa.gov"
