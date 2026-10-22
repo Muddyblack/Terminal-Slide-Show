@@ -10,6 +10,7 @@ import { GoogleDriveService } from './services/googleDriveService.js';
 import { SlideshowManager } from './services/slideshowManager.js';
 import { Logger } from './utils/logger.js';
 import { readLocalizedData } from './utils/localizedData.js';
+import { isOperatingNow } from './utils/schedule.js';
 import { cached } from './utils/ttlCache.js';
 import { forecastUrl, hasCoordinates } from './utils/weather.js';
 import { createServer } from 'http';
@@ -154,6 +155,16 @@ app.get('/api/server-status', (req, res) => {
         logger.error('Error checking server status:', error);
         res.status(500).send('Internal Server Error');
     }
+});
+
+/**
+ * @route GET /api/display-state
+ * @description Whether the display should be on right now according to the schedule.
+ * Polled by the device's power timer and by the MPV player.
+ */
+app.get('/api/display-state', (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json({ active: isOperatingNow(config.schedule) });
 });
 
 // Local Data API Routes
