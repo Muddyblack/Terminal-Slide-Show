@@ -515,7 +515,7 @@ app.get('*', limiter, (req, res) => {
  * Start server and initialize services
  */
 initialize().then(() => {
-    server.listen(port, () => {
+    server.listen(port, host, () => {
         logger.info(`Backend running at http://${host}:${port}/`);
     });
 }).catch(error => {

@@ -26,7 +26,7 @@ RUN printf '#!/bin/sh\nchown -R node:node /app/downloads\nexec su-exec node "$@"
 WORKDIR /app/server
 
 # Runtime configuration
-ENV HOST=0.0.0.0
+ENV BACKEND_HOST=0.0.0.0
 ENV NODE_ENV=production
 EXPOSE 3000
 
