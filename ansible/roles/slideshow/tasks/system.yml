@@ -53,6 +53,20 @@
     append: true
   when: slideshow_display_mode != 'none'
 
+- name: Read the current time zone
+  ansible.builtin.command: timedatectl show --property=Timezone --value
+  register: slideshow_current_timezone
+  changed_when: false
+  check_mode: false
+  when: slideshow_timezone | length > 0
+
+- name: Set the time zone
+  ansible.builtin.command: "timedatectl set-timezone {{ slideshow_timezone | quote }}"
+  changed_when: true
+  when:
+    - slideshow_timezone | length > 0
+    - slideshow_current_timezone.stdout | trim != slideshow_timezone
+
 - name: Create the config directory
   ansible.builtin.file:
     path: "{{ slideshow_config_dir }}"

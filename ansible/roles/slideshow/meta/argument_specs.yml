@@ -44,3 +44,6 @@ argument_specs:
         description: HH:MM, or empty for no daily reboot.
       slideshow_reboot_if_required:
         type: str
+      slideshow_timezone:
+        type: str
+        description: Time zone such as Europe/Berlin, or empty to leave it alone.

@@ -48,6 +48,10 @@ slideshow_nasa_api_key: ""
 # greetings.json (flat, or in de/ and en/ subfolders). Copied to the device.
 slideshow_content_dir: ""
 
+# Time zone of the device, e.g. "Europe/Berlin". The schedule uses local time, so
+# set this; an empty value leaves the device's time zone alone (usually UTC).
+slideshow_timezone: ""
+
 # ---------------------------------------------------------------------------
 # Access and network security
 # ---------------------------------------------------------------------------

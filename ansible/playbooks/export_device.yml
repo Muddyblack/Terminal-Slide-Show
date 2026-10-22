@@ -1,0 +1,22 @@
+---
+# Writes one device's settings (all slideshow_* variables, secrets decrypted) to a
+# file. Used by tools/slideshow-sdcard to prepare an SD card; it runs on your machine
+# and changes nothing on the device.
+#   ansible-playbook muddyblack.terminal_slideshow.export_device --limit lobby-pi -e export_dir=/tmp/x
+- name: Export a device's settings
+  hosts: slideshow
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Write the settings file
+      ansible.builtin.copy:
+        content: >-
+          {{ hostvars[inventory_hostname]
+             | dict2items
+             | selectattr('key', 'match', '^slideshow_')
+             | items2dict
+             | to_nice_json(vault_to_text=True) }}
+        dest: "{{ export_dir }}/vars.json"
+        mode: "0600"
+      no_log: true
+      delegate_to: localhost
