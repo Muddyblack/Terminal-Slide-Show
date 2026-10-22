@@ -6,6 +6,7 @@ import '@/styles/dynamicDailyView.css';
 import AnimatedWeather from '@/components/dynamic_daily_view/animatedWeather';
 import { QuoteType, WeatherType, NasaImageType, GreetingsType } from '@/components/dynamic_daily_view/types';
 import { useServerStatus } from '@/contexts/ServerStatusContext';
+import { dateLocale, t } from '@/i18n';
 
 
 type SetterFunction = (value: any) => void;
@@ -22,7 +23,8 @@ const DynamicDailyView = () => {
   const [showNasaInfo, setShowNasaInfo] = useState(false);
   const [greetings, setGreetings] = useState<GreetingsType>({});
   const isServerConnected = useServerStatus();
-  const [logoSrc, setLogoSrc] = useState('/slideshow.png');
+  const { dailyView, branding } = frontendConfig;
+  const [logoSrc, setLogoSrc] = useState(branding.logo);
   const [isImageLoading, setIsImageLoading] = useState(true);
 
   const isNight = weather ? !weather.is_day : (time.getHours() >= 18 || time.getHours() < 6); // fallback to time-based check if weather data isn't available
@@ -64,7 +66,7 @@ const DynamicDailyView = () => {
       }
 
       // Fetch and convert to base64 if not cached
-      const response = await fetch('/slideshow.png');
+      const response = await fetch(branding.logo);
       const blob = await response.blob();
 
       return new Promise((resolve, reject) => {
@@ -80,7 +82,7 @@ const DynamicDailyView = () => {
       });
     } catch (err) {
       console.warn('Failed to cache logo:', err);
-      return '/slideshow.png'; // Fallback to normal path
+      return branding.logo; // Fallback to normal path
     }
   };
 
@@ -118,11 +120,7 @@ const DynamicDailyView = () => {
   const fetchNasaImage = () => fetchWithCache('/api/nasa-apod', 'nasa', setNasaImage);
 
   const fetchWeather = () => {
-    fetchWithCache(
-      `/api/weather?location=${encodeURIComponent(frontendConfig.info.location)}`,
-      'weather',
-      (data) => setWeather(data.current_weather)
-    );
+    fetchWithCache('/api/weather', 'weather', (data) => setWeather(data.current_weather));
   };
 
   const getGreetings = (hour: number): string => {
@@ -132,18 +130,18 @@ const DynamicDailyView = () => {
         return greetings[range];
       }
     }
-    return 'Nachtschicht oder Feierabend? 🌙';
+    return '';
   };
 
   const safeDataFetch = async () => {
     console.debug('Current server connection status:', isServerConnected);
     try {
       await Promise.allSettled([
-        fetchQuotes(),
-        fetchWeather(),
-        fetchFacts(),
-        fetchNasaImage(),
-        fetchGreetings()
+        dailyView.quote && fetchQuotes(),
+        dailyView.weather && fetchWeather(),
+        dailyView.fact && fetchFacts(),
+        dailyView.nasa && fetchNasaImage(),
+        dailyView.greeting && fetchGreetings()
       ]);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -193,14 +191,14 @@ const DynamicDailyView = () => {
     }
   }, [nasaImage?.url]);
 
-  const formattedDate = time.toLocaleDateString('de-DE', {
+  const formattedDate = time.toLocaleDateString(dateLocale(), {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   });
 
-  const formattedTime = time.toLocaleTimeString('de-DE', {
+  const formattedTime = time.toLocaleTimeString(dateLocale(), {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit'
@@ -208,7 +206,7 @@ const DynamicDailyView = () => {
 
   return (
     <div className={`daily-view ${isNight ? 'night' : 'day'}`}>
-      {nasaImage && !isImageLoading && (
+      {dailyView.nasa && nasaImage && !isImageLoading && (
         <>
           <div
             className={`nasa-background ${isNight ? 'night' : 'day'}`}
@@ -228,12 +226,12 @@ const DynamicDailyView = () => {
 
       <div className="content-wrapper">
         <div className="dhbw-logo">
-          <img src={logoSrc} alt="DHBW Logo" />
+          <img src={logoSrc} alt={branding.logoAlt} />
         </div>
 
         {!isServerConnected && (
           <div className="offline-badge">
-            <span className="text-yellow-300">⚠️ Offline Mode - Using Cached Data</span>
+            <span className="text-yellow-300">⚠️ {t('offline')}</span>
           </div>
         )}
 
@@ -243,7 +241,7 @@ const DynamicDailyView = () => {
         </div>
 
         <div className="main-content">
-          <h1 className="greeting-text">{getGreetings(time.getHours())}</h1>
+          {dailyView.greeting && <h1 className="greeting-text">{getGreetings(time.getHours())}</h1>}
 
           <div className="datetime-display">
             <div className="date">
@@ -256,10 +254,10 @@ const DynamicDailyView = () => {
             </div>
           </div>
 
-          <div className="quote-card" onClick={() => setShowTranslation(!showTranslation)}>
+          {dailyView.quote && <div className="quote-card" onClick={() => setShowTranslation(!showTranslation)}>
             <Quote className="text-yellow-300" />
             {isLoading ? (
-              <p className="quote-text">Lädt Zitat...</p>
+              <p className="quote-text">{t('loadingQuote')}</p>
             ) : error ? (
               <p className="quote-text text-yellow-300">{error}</p>
             ) : quote ? (
@@ -271,16 +269,16 @@ const DynamicDailyView = () => {
                 )}
               </>
             ) : null}
-          </div>
+          </div>}
 
-          <div className="fact-card">
+          {dailyView.fact && <div className="fact-card">
             <Coffee className="text-emerald-300" />
             <p>{fact}</p>
-          </div>
+          </div>}
         </div>
 
         <div>
-          {weather && (
+          {dailyView.weather && weather && (
             <AnimatedWeather
               weatherCode={weather.weathercode}
               temperature={weather.temperature}
@@ -296,7 +294,7 @@ const DynamicDailyView = () => {
           )}
         </div>
 
-        {nasaImage && (
+        {dailyView.nasa && nasaImage && (
           <div
             className={`nasa-info ${showNasaInfo ? 'expanded' : ''}`}
             onClick={() => setShowNasaInfo(!showNasaInfo)}

@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 
 import { Server } from '@/components/assets/icons';
 import '@/styles/connection-Toast.css';
+import { t } from '@/i18n';
 
 const ConnectionToast = () => {
   return (
@@ -23,7 +24,7 @@ const ConnectionToast = () => {
       >
         <Server />
       </motion.div>
-      <span className="status-text">Connection Lost ...</span>
+      <span className="status-text">{t('connectionLost')}</span>
     </motion.div>
   );
 };
