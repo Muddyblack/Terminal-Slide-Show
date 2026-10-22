@@ -225,7 +225,8 @@ def build_bundle(fleet, host, workdir):
     # Use exactly the collection that is shipped to the device, not whatever the fleet has installed
     source = workdir / "collections-src"
     source.mkdir()
-    run(["ansible-galaxy", "collection", "install", "--no-deps", "-p", str(source),
+    # --force: otherwise Galaxy skips the install when the same version exists in another collections path
+    run(["ansible-galaxy", "collection", "install", "--force", "--no-deps", "-p", str(source),
          *map(str, collections.glob("muddyblack-*.tar.gz"))], stdout=subprocess.DEVNULL)
 
     settings = export_vars(fleet, host, workdir)
@@ -385,6 +386,9 @@ def main():
         raise Fail("--yes needs --device, so it can never pick a disk for you.")
     if not (args.fleet / "inventory.yml").exists():
         raise Fail(f"{args.fleet}/inventory.yml not found")
+    if not args.output and sys.platform != "linux":
+        raise Fail("Writing straight to a card only works on Linux. On Windows (WSL2) or macOS use "
+                   "--output NAME.img and flash that file with Raspberry Pi Imager (see docs/SETUP.md).")
     for tool in ("ansible-playbook", "ansible-galaxy", "mcopy"):
         if not shutil.which(tool):
             raise Fail(f"{tool} is required" + (" (package: mtools)" if tool == "mcopy" else ""))

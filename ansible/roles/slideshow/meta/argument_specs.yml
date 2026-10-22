@@ -24,6 +24,8 @@ argument_specs:
         type: dict
       slideshow_harden_ssh:
         type: bool
+      slideshow_allow_mdns:
+        type: bool
       slideshow_admin_ssh_keys:
         type: list
         elements: str

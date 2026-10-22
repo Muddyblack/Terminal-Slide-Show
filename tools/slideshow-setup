@@ -1,0 +1,506 @@
+#!/usr/bin/env python3
+"""Guided setup for a Terminal Slide Show fleet (Raspberry Pi 3, 4 and 5).
+
+Asks a few questions (German or English), creates your fleet folder with the
+inventory, settings and encrypted secrets, installs the Ansible collection and then
+offers to prepare the SD card for each device.
+
+    tools/slideshow-setup              # German by default, --lang en for English
+
+Works on Linux, macOS and Windows (inside WSL2). Needs: python3, ansible, mtools, ssh-keygen.
+See docs/SETUP.md (English) or docs/ANLEITUNG.md (Deutsch).
+"""
+
+import argparse
+import getpass
+import ipaddress
+import json
+import os
+import re
+import secrets
+import shutil
+import subprocess
+import sys
+import urllib.request
+from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+REPO = Path(__file__).resolve().parent.parent
+RELEASES_API = "https://api.github.com/repos/Muddyblack/Terminal-Slide-Show/releases/latest"
+VAULT_PASSWORD_FILE = Path.home() / ".config" / "slideshow-vault-pass"
+HOSTNAME = re.compile(r"^[a-z0-9][a-z0-9-]{0,30}$")
+
+TEXT = {
+    "de": {
+        "title": "Terminal Slide Show: Einrichtung",
+        "intro": "Ich stelle dir ein paar Fragen und lege daraus deinen Flotten-Ordner an. "
+                 "Mit Enter übernimmst du den Vorschlag in Klammern.",
+        "fleet_dir": "Wo soll der Flotten-Ordner liegen?",
+        "exists": "{path} existiert bereits und ist nicht leer. Wähle einen anderen Ordner.",
+        "location": "Ortsname für Anzeige und Wetter (z. B. Friedrichshafen)",
+        "devices": "Namen der Geräte, mit Komma getrennt (nur a-z, 0-9, Bindestrich; z. B. lobby-pi, mensa-pi)",
+        "bad_name": "'{name}' ist kein gültiger Gerätename.",
+        "model": "Welches Raspberry-Pi-Modell ist {name}? (3, 4 oder 5)",
+        "model_hint_mpv": "  -> {name} zeigt nur Bilder und Videos (MPV): leicht genug für einen Pi 3.",
+        "model_hint_browser": "  -> {name} zeigt die volle Anzeige mit Uhr, Wetter und Zitaten (Chromium).",
+        "admin": "Benutzername für die Verwaltung per SSH",
+        "key_found": "SSH-Schlüssel gefunden: {path}",
+        "key_none": "Es gibt noch keinen SSH-Schlüssel. Soll ich einen anlegen?",
+        "key_made": "Schlüssel angelegt: {path}",
+        "key_fail": "Ohne SSH-Schlüssel kann sich niemand am Gerät anmelden.",
+        "timezone": "Zeitzone des Geräts",
+        "bad_timezone": "Unbekannte Zeitzone, Beispiel: Europe/Berlin",
+        "wifi": "Soll das Gerät WLAN nutzen (sonst Netzwerkkabel)?",
+        "wifi_ssid": "WLAN-Name (SSID)",
+        "wifi_password": "WLAN-Passwort (wird nicht angezeigt)",
+        "wifi_country": "WLAN-Land (zwei Buchstaben, z. B. DE)",
+        "drive_folder": "Google-Drive-Ordner-ID (der letzte Teil der Ordner-Adresse)",
+        "drive_key": "Pfad zur Service-Account-Schlüsseldatei (.json)",
+        "bad_key": "Das ist keine gültige Service-Account-Datei: {error}",
+        "share_hint": "WICHTIG: Gib deinen Drive-Ordner für diese Adresse frei (Betrachter reicht):\n  {email}",
+        "nasa": "NASA-API-Schlüssel für das Bild des Tages (Enter = ohne)",
+        "on_time": "Anzeige einschalten um (HH:MM)",
+        "off_time": "Anzeige ausschalten um (HH:MM)",
+        "bad_time": "Bitte im Format HH:MM angeben, z. B. 07:30",
+        "days": "An welchen Tagen soll sie laufen?  1) Mo-Fr   2) Mo-Sa   3) jeden Tag",
+        "display_language": "Sprache der Anzeige (de oder en)",
+        "reboot": "Soll das Gerät jede Nacht um 04:15 neu starten? (wendet Updates an)",
+        "ssh_net": "SSH nur aus diesem Netz erlauben (z. B. 192.168.1.0/24). Enter = von überall",
+        "ssh_net_warn": "  Hinweis: Von überall ist riskanter. Besser nur dein Heimnetz oder ein VPN angeben.",
+        "bad_net": "Bitte ein Netz wie 192.168.1.0/24 angeben.",
+        "release_found": "Aktuelle Version: {version} (Prüfsumme wird festgeschrieben)",
+        "release_none": "Es wurde keine veröffentlichte Version gefunden. Das Gerät braucht eine Version "
+                        "von der Releases-Seite des Projekts.",
+        "release_ask": "Version (ohne v)",
+        "summary": "Zusammenfassung",
+        "confirm": "Alles anlegen?",
+        "cancelled": "Abgebrochen, es wurde nichts angelegt.",
+        "vault_new": "Vault-Passwort angelegt: {path}\n  SICHERE DIESE DATEI (Passwortmanager/Backup). Ohne sie sind deine Geheimnisse nicht lesbar.",
+        "vault_reuse": "Vorhandenes Vault-Passwort wird verwendet: {path}",
+        "installing": "Installiere die Ansible-Sammlung ...",
+        "created": "Fertig! Dein Flotten-Ordner: {path}",
+        "next_card": "Jetzt die SD-Karte für {name} erstellen?",
+        "card_linux": "Direkt auf die SD-Karte schreiben (Karte jetzt einstecken)? Nein = Image-Datei",
+        "card_image": "Image-Datei: {path}\n  Schreibe sie mit dem Raspberry Pi Imager (\"Eigenes Image\"), "
+                      "und lehne das Anwenden von Einstellungen ab. Siehe docs/ANLEITUNG.md.",
+        "later": "SD-Karte später erstellen mit:\n  {command}",
+        "yes": "j", "no": "n", "yn": "(j/n)",
+        "missing": "{tool} fehlt. {hint}",
+        "readme": "# Meine Slide-Show-Flotte\n\nNächste Schritte:\n\n"
+                  "1. SD-Karte erstellen: `{sdcard} --fleet . --host GERÄT`\n"
+                  "2. Karte in den Pi stecken, Strom an, 10 bis 15 Minuten warten.\n"
+                  "3. Verwalten: `ansible-playbook muddyblack.terminal_slideshow.status`\n\n"
+                  "Die Anleitung steht in docs/ANLEITUNG.md des Projekts.\n",
+    },
+    "en": {
+        "title": "Terminal Slide Show: setup",
+        "intro": "I will ask a few questions and create your fleet folder from the answers. "
+                 "Press Enter to accept the suggestion in brackets.",
+        "fleet_dir": "Where should the fleet folder go?",
+        "exists": "{path} already exists and is not empty. Choose another folder.",
+        "location": "Place name for the display and weather (e.g. Friedrichshafen)",
+        "devices": "Names of the devices, separated by commas (a-z, 0-9, hyphen only; e.g. lobby-pi, canteen-pi)",
+        "bad_name": "'{name}' is not a valid device name.",
+        "model": "Which Raspberry Pi model is {name}? (3, 4 or 5)",
+        "model_hint_mpv": "  -> {name} will show images and videos only (MPV): light enough for a Pi 3.",
+        "model_hint_browser": "  -> {name} will show the full display with clock, weather and quotes (Chromium).",
+        "admin": "User name for managing the device over SSH",
+        "key_found": "Found an SSH key: {path}",
+        "key_none": "There is no SSH key yet. Create one?",
+        "key_made": "Key created: {path}",
+        "key_fail": "Without an SSH key nobody could log in to the device.",
+        "timezone": "Time zone of the device",
+        "bad_timezone": "Unknown time zone, for example: Europe/Berlin",
+        "wifi": "Should the device use Wi-Fi (otherwise a network cable)?",
+        "wifi_ssid": "Wi-Fi name (SSID)",
+        "wifi_password": "Wi-Fi password (not shown)",
+        "wifi_country": "Wi-Fi country (two letters, e.g. DE)",
+        "drive_folder": "Google Drive folder ID (the last part of the folder's address)",
+        "drive_key": "Path to the service account key file (.json)",
+        "bad_key": "That is not a valid service account file: {error}",
+        "share_hint": "IMPORTANT: share your Drive folder with this address (viewer is enough):\n  {email}",
+        "nasa": "NASA API key for the picture of the day (Enter = none)",
+        "on_time": "Switch the display on at (HH:MM)",
+        "off_time": "Switch the display off at (HH:MM)",
+        "bad_time": "Please use the format HH:MM, e.g. 07:30",
+        "days": "On which days should it run?  1) Mon-Fri   2) Mon-Sat   3) every day",
+        "display_language": "Language of the display (de or en)",
+        "reboot": "Reboot the device every night at 04:15? (applies updates)",
+        "ssh_net": "Only allow SSH from this network (e.g. 192.168.1.0/24). Enter = from anywhere",
+        "ssh_net_warn": "  Note: anywhere is riskier. Prefer your home network or a VPN.",
+        "bad_net": "Please give a network like 192.168.1.0/24.",
+        "release_found": "Latest version: {version} (its checksum will be pinned)",
+        "release_none": "No published release was found. The device needs a version from the "
+                        "project's Releases page.",
+        "release_ask": "Version (without v)",
+        "summary": "Summary",
+        "confirm": "Create everything?",
+        "cancelled": "Cancelled, nothing was created.",
+        "vault_new": "Vault password created: {path}\n  BACK THIS FILE UP (password manager). Without it your secrets cannot be read.",
+        "vault_reuse": "Using the existing vault password: {path}",
+        "installing": "Installing the Ansible collection ...",
+        "created": "Done! Your fleet folder: {path}",
+        "next_card": "Create the SD card for {name} now?",
+        "card_linux": "Write straight to the SD card (insert it now)? No = image file",
+        "card_image": "Image file: {path}\n  Write it with Raspberry Pi Imager (\"Use custom\") and decline to apply "
+                      "any settings. See docs/SETUP.md.",
+        "later": "Create the SD card later with:\n  {command}",
+        "yes": "y", "no": "n", "yn": "(y/n)",
+        "missing": "{tool} is missing. {hint}",
+        "readme": "# My slide show fleet\n\nNext steps:\n\n"
+                  "1. Create an SD card: `{sdcard} --fleet . --host DEVICE`\n"
+                  "2. Put the card in the Pi, power on, wait 10 to 15 minutes.\n"
+                  "3. Manage: `ansible-playbook muddyblack.terminal_slideshow.status`\n\n"
+                  "The guide is docs/SETUP.md in the project.\n",
+    },
+}
+
+
+class Cancel(Exception):
+    pass
+
+
+class Wizard:
+    def __init__(self, lang):
+        self.lang = lang
+
+    def t(self, key, **values):
+        return TEXT[self.lang][key].format(**values)
+
+    def ask(self, key, default=None, check=None, secret=False, optional=False, **values):
+        question = self.t(key, **values)
+        hint = f" [{default}]" if default else ""
+        while True:
+            reader = getpass.getpass if secret else input
+            answer = reader(f"{question}{hint}: ").strip()
+            if not answer:
+                if default is not None:
+                    answer = default
+                elif optional:
+                    return ""
+                else:
+                    continue
+            if check:
+                problem = check(answer)
+                if problem:
+                    print(problem)
+                    continue
+            return answer
+
+    def yes(self, key, default=True, **values):
+        suffix = f" {self.t('yn')} [{self.t('yes') if default else self.t('no')}]"
+        while True:
+            answer = input(self.t(key, **values) + suffix + ": ").strip().lower()
+            if not answer:
+                return default
+            if answer[0] in (self.t("yes"), "y", "j"):
+                return True
+            if answer[0] == self.t("no"):
+                return False
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def check_time(wizard):
+    return lambda value: None if re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", value) else wizard.t("bad_time")
+
+
+def check_timezone(wizard):
+    def check(value):
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, ValueError):
+            return wizard.t("bad_timezone")
+    return check
+
+
+def check_network(wizard):
+    def check(value):
+        try:
+            ipaddress.ip_network(value, strict=False)
+        except ValueError:
+            return wizard.t("bad_net")
+    return check
+
+
+def find_ssh_key():
+    for name in ("id_ed25519.pub", "id_ecdsa.pub", "id_rsa.pub"):
+        path = Path.home() / ".ssh" / name
+        if path.exists():
+            return path
+    return None
+
+
+def make_ssh_key():
+    key = Path.home() / ".ssh" / "id_ed25519"
+    key.parent.mkdir(mode=0o700, exist_ok=True)
+    subprocess.run(["ssh-keygen", "-t", "ed25519", "-f", str(key), "-C", "slideshow-admin"], check=True)
+    return Path(str(key) + ".pub")
+
+
+def read_service_account(path):
+    """Returns (raw JSON text, e-mail) or raises ValueError with a readable reason."""
+    try:
+        raw = Path(path).expanduser().read_text()
+        data = json.loads(raw)
+    except (OSError, ValueError) as error:
+        raise ValueError(str(error))
+    if data.get("type") != "service_account" or not data.get("client_email") or not data.get("private_key"):
+        raise ValueError('"type", "client_email" and "private_key" are required')
+    return raw.strip(), data["client_email"]
+
+
+def release_with_tarball(release):
+    """(version, sha256 URL) if the release ships the tarball and its checksum, else None.
+
+    Older releases of the project have no tarball, so they must not be offered."""
+    version = release["tag_name"].lstrip("v")
+    names = {asset["name"]: asset["browser_download_url"] for asset in release.get("assets", [])}
+    tarball = f"terminal-slide-show-{version}.tar.gz"
+    if tarball in names and tarball + ".sha256" in names:
+        return version, names[tarball + ".sha256"]
+    return None
+
+
+def latest_release():
+    """(version, sha256) of the newest release that can be installed, or (None, None)."""
+    try:
+        request = urllib.request.Request(RELEASES_API, headers={"User-Agent": "slideshow-setup"})
+        with urllib.request.urlopen(request, timeout=15) as response:
+            found = release_with_tarball(json.load(response))
+        if not found:
+            return None, None
+        version, checksum_url = found
+        with urllib.request.urlopen(checksum_url, timeout=15) as response:
+            return version, response.read().decode().split()[0].lower()
+    except (OSError, ValueError, KeyError):
+        return None, None
+
+
+def q(value):
+    """A YAML-safe quoted scalar (JSON strings are valid YAML)."""
+    return json.dumps(value, ensure_ascii=False)
+
+
+def run_tool(command, **kwargs):
+    try:
+        return subprocess.run(command, check=True, **kwargs)
+    except FileNotFoundError:
+        raise SystemExit(f"{command[0]} not found")
+
+
+# ---------------------------------------------------------------------------
+# Files
+# ---------------------------------------------------------------------------
+
+def write_fleet(fleet, answers, vault_password_file):
+    fleet.mkdir(parents=True, exist_ok=True)
+    (fleet / "group_vars" / "slideshow").mkdir(parents=True)
+    (fleet / "host_vars").mkdir()
+
+    hosts = "\n".join(f"        {name}:\n          ansible_host: {name}.local" for name in answers["devices"])
+    (fleet / "inventory.yml").write_text(
+        "---\n# Your devices. Replace <name>.local by the IP address if the name is not found on your network.\n"
+        f"all:\n  children:\n    slideshow:\n      hosts:\n{hosts}\n")
+
+    (fleet / "ansible.cfg").write_text(
+        "[defaults]\n"
+        "inventory = inventory.yml\n"
+        "display_args_to_stdout = false\n"
+        "interpreter_python = auto_silent\n"
+        f"vault_password_file = {vault_password_file}\n\n"
+        "[ssh_connection]\n"
+        "pipelining = true\n"
+        "# Trust a device's key the first time you connect, refuse it if it ever changes\n"
+        "ssh_args = -o StrictHostKeyChecking=accept-new\n")
+
+    (fleet / "requirements.yml").write_text(
+        "---\ncollections:\n"
+        "  - name: https://github.com/Muddyblack/Terminal-Slide-Show.git#/ansible\n"
+        "    type: git\n"
+        f"    version: {'v' + answers['version'] if answers['release_found'] else 'main'}\n"
+        "  - name: ansible.posix\n")
+
+    schedule = {"enabled": True, "onTime": answers["on_time"], "offTime": answers["off_time"],
+                "days": answers["days"], "vacationPeriods": []}
+    main = [
+        "---",
+        "# Settings for every device. Per-device values are in host_vars/.",
+        f"slideshow_version: {q(answers['version'])}",
+        f"slideshow_release_sha256: {q(answers['sha256'])}",
+        "",
+        f"slideshow_admin_user: {q(answers['admin'])}",
+        f"slideshow_admin_ssh_keys:\n  - {q(answers['ssh_key'])}",
+        f"slideshow_ssh_allowed_cidrs: {json.dumps(answers['ssh_net'])}",
+        "",
+        f"slideshow_timezone: {q(answers['timezone'])}",
+        f"slideshow_location: {q(answers['location'])}",
+        f"slideshow_google_folder_id: {q(answers['folder'])}",
+        "",
+        "slideshow_settings:",
+        f"  schedule: {json.dumps(schedule)}",
+        f"  locale: {json.dumps({'language': answers['display_language'], 'units': 'metric'})}",
+        "",
+        "slideshow_updates: security",
+        f"slideshow_daily_reboot: {q('04:15' if answers['reboot'] else '')}",
+    ]
+    if answers["wifi"]:
+        main += ["", "# Only used when preparing the SD card",
+                 "slideshow_wifi:",
+                 f"  ssid: {q(answers['wifi']['ssid'])}",
+                 '  password: "{{ vault_wifi_password }}"',
+                 f"  country: {q(answers['wifi']['country'])}"]
+    (fleet / "group_vars" / "slideshow" / "main.yml").write_text("\n".join(main) + "\n")
+
+    for name, mode in answers["devices"].items():
+        (fleet / "host_vars" / f"{name}.yml").write_text(f"---\nslideshow_display_mode: {mode}\n")
+
+    vault = ["---", f"slideshow_google_service_account: {q(answers['service_account'])}"]
+    if answers["nasa"]:
+        vault.append(f"slideshow_nasa_api_key: {q(answers['nasa'])}")
+    if answers["wifi"]:
+        vault.append(f"vault_wifi_password: {q(answers['wifi']['password'])}")
+    vault_file = fleet / "group_vars" / "slideshow" / "vault.yml"
+    vault_file.write_text("\n".join(vault) + "\n")
+    vault_file.chmod(0o600)
+    run_tool(["ansible-vault", "encrypt", "--vault-password-file", str(vault_password_file), str(vault_file)],
+             stdout=subprocess.DEVNULL)
+
+    (fleet / ".gitignore").write_text("*.img\n.ansible/\n")
+
+
+def ensure_vault_password(wizard):
+    if VAULT_PASSWORD_FILE.exists():
+        print(wizard.t("vault_reuse", path=VAULT_PASSWORD_FILE))
+        return
+    VAULT_PASSWORD_FILE.parent.mkdir(parents=True, exist_ok=True)
+    VAULT_PASSWORD_FILE.write_text(secrets.token_urlsafe(32) + "\n")
+    VAULT_PASSWORD_FILE.chmod(0o600)
+    print(wizard.t("vault_new", path=VAULT_PASSWORD_FILE))
+
+
+# ---------------------------------------------------------------------------
+
+def main():
+    parser = argparse.ArgumentParser(description="Guided setup for a Terminal Slide Show fleet.")
+    parser.add_argument("--lang", choices=["de", "en"], help="language of the questions (default: ask)")
+    args = parser.parse_args()
+
+    for tool, hint in (("ansible-vault", "Install Ansible (see the guide)."), ("ssh-keygen", ""), ("mcopy", "Install mtools.")):
+        if not shutil.which(tool):
+            sys.exit(f"{tool} is missing. {hint}")
+
+    lang = args.lang
+    if not lang:
+        lang = input("Sprache / Language [de/en] (de): ").strip().lower() or "de"
+        lang = lang if lang in TEXT else "de"
+    w = Wizard(lang)
+
+    print(f"\n=== {w.t('title')} ===\n{w.t('intro')}\n")
+
+    default_dir = "~/slideshow-flotte" if lang == "de" else "~/slideshow-fleet"
+    fleet = Path(w.ask("fleet_dir", default_dir)).expanduser()
+    if fleet.exists() and any(fleet.iterdir()):
+        sys.exit(w.t("exists", path=fleet))
+
+    a = {}
+    a["location"] = w.ask("location")
+
+    def check_names(value):
+        for name in (n.strip() for n in value.split(",")):
+            if not HOSTNAME.match(name):
+                return w.t("bad_name", name=name)
+    names = [n.strip() for n in w.ask("devices", check=check_names).split(",") if n.strip()]
+    a["devices"] = {}
+    for name in names:
+        model = w.ask("model", "4", check=lambda v: None if v in ("3", "4", "5") else "3, 4 / 5", name=name)
+        a["devices"][name] = "mpv" if model == "3" else "browser"
+        print(w.t("model_hint_mpv" if model == "3" else "model_hint_browser", name=name))
+
+    a["admin"] = w.ask("admin", "admin", check=lambda v: None if re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", v) else "a-z, 0-9")
+    key = find_ssh_key()
+    if key:
+        print(w.t("key_found", path=key))
+    elif w.yes("key_none"):
+        key = make_ssh_key()
+        print(w.t("key_made", path=key))
+    if not key:
+        sys.exit(w.t("key_fail"))
+    a["ssh_key"] = key.read_text().strip()
+
+    a["timezone"] = w.ask("timezone", "Europe/Berlin", check=check_timezone(w))
+    a["wifi"] = None
+    if w.yes("wifi", default=False):
+        ssid = w.ask("wifi_ssid")
+        a["wifi"] = {"ssid": ssid, "password": w.ask("wifi_password", secret=True),
+                     "country": w.ask("wifi_country", "DE", check=lambda v: None if re.fullmatch(r"[A-Za-z]{2}", v) else "DE").upper()}
+
+    a["folder"] = w.ask("drive_folder")
+    while True:
+        path = w.ask("drive_key")
+        try:
+            a["service_account"], email = read_service_account(path)
+            break
+        except ValueError as error:
+            print(w.t("bad_key", error=error))
+    print(w.t("share_hint", email=email))
+    a["nasa"] = w.ask("nasa", optional=True)
+
+    a["on_time"] = w.ask("on_time", "07:30", check=check_time(w))
+    a["off_time"] = w.ask("off_time", "19:30", check=check_time(w))
+    choice = w.ask("days", "1", check=lambda v: None if v in ("1", "2", "3") else "1, 2, 3")
+    a["days"] = {"1": [1, 2, 3, 4, 5], "2": [1, 2, 3, 4, 5, 6], "3": [1, 2, 3, 4, 5, 6, 7]}[choice]
+    a["display_language"] = w.ask("display_language", lang, check=lambda v: None if v in ("de", "en") else "de / en")
+    a["reboot"] = w.yes("reboot")
+
+    net = w.ask("ssh_net", optional=True, check=lambda v: check_network(w)(v))
+    if not net:
+        print(w.t("ssh_net_warn"))
+    a["ssh_net"] = [net] if net else []
+
+    version, sha = latest_release()
+    a["release_found"] = bool(version)
+    if version:
+        print(w.t("release_found", version=version))
+        a["version"], a["sha256"] = version, sha or ""
+    else:
+        print(w.t("release_none"))
+        a["version"], a["sha256"] = w.ask("release_ask", "0.1.0"), ""
+
+    print(f"\n--- {w.t('summary')} ---")
+    print(f"  {a['location']} | {', '.join(f'{n} ({m})' for n, m in a['devices'].items())}")
+    print(f"  {a['timezone']}, {a['on_time']}-{a['off_time']}, Drive {a['folder']}, v{a['version']}")
+    if not w.yes("confirm"):
+        sys.exit(w.t("cancelled"))
+
+    ensure_vault_password(w)
+    write_fleet(fleet, a, VAULT_PASSWORD_FILE)
+    sdcard = REPO / "tools" / "slideshow-sdcard"
+    (fleet / "README.md").write_text(w.t("readme", sdcard=sdcard))
+
+    print(w.t("installing"))
+    run_tool(["ansible-galaxy", "collection", "install", str(REPO / "ansible"), "--force"], stdout=subprocess.DEVNULL)
+    run_tool(["ansible-galaxy", "collection", "install", "ansible.posix"], stdout=subprocess.DEVNULL)
+
+    print("\n" + w.t("created", path=fleet))
+
+    for name in a["devices"]:
+        command = [str(sdcard), "--fleet", str(fleet), "--host", name]
+        if not w.yes("next_card", default=False, name=name):
+            print(w.t("later", command=" ".join(command)))
+            continue
+        if sys.platform == "linux" and w.yes("card_linux", default=True):
+            subprocess.run(command)
+        else:
+            image = fleet / f"{name}.img"
+            subprocess.run([*command, "--output", str(image)])
+            print(w.t("card_image", path=image))
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (KeyboardInterrupt, EOFError):
+        sys.exit("\n")
