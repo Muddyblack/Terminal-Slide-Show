@@ -21,6 +21,14 @@ jobs:
       - run: npm ci
       - run: npm test
 
+  ansible:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ansible/ansible-lint@v25
+        with:
+          working_directory: ansible
+
   client:
     runs-on: ubuntu-latest
     defaults:

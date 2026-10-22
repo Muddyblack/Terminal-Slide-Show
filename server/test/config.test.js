@@ -38,12 +38,12 @@ describe('SLIDESHOW_CONFIG', () => {
   it('overrides defaults and is exposed to the browser', async () => {
     const { config, publicConfig } = await load(JSON.stringify({
       schedule: { onTime: '09:15' },
-      display: { offMode: 'power' },
+      secretThing: { token: 'x' },
     }));
     assert.equal(config.schedule.onTime, '09:15');
     assert.equal(config.schedule.offTime, '19:30'); // untouched default
     assert.equal(publicConfig.schedule.onTime, '09:15');
-    assert.equal(publicConfig.display, undefined); // server-only settings stay private
+    assert.equal(publicConfig.secretThing, undefined); // keys the browser does not know stay private
   });
 
   it('fails loudly on a broken file', async () => {

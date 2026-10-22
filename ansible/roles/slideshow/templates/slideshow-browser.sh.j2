@@ -14,6 +14,7 @@ mkdir -p "$profile"
 
 exec /usr/bin/cage -d -- /usr/bin/chromium \
     --kiosk \
+    --user-agent="Mozilla/5.0 (TERMINAL-SLIDE-SHOW) Gecko/20100101 Chrome/123.0" \
     --ozone-platform=wayland \
     --user-data-dir="$profile" \
     --disk-cache-dir="$profile/cache" \

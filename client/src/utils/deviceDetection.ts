@@ -2,7 +2,7 @@
  * Detects if the current device is a Raspberry Pi
  * @returns {boolean} True if running on Raspberry Pi, false otherwise
  * 
- * Note: Detection is based on user agent which is set by the terminal-slide-show bash package
+ * Note: Detection is based on user agent which the Ansible role's browser launcher sets
  *
  */
 export const isRaspberryPi = () => {
