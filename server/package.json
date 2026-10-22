@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch-path=src --watch-path=config src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "dotenv": "^16.3.1",
