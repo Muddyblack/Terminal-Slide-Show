@@ -15,6 +15,7 @@ import { useLocalMediaManager } from '@/hooks/useLocalMediaManager';
 import { useSchedule } from '@/hooks/useSchedule';
 import { useServerStatus } from '@/contexts/ServerStatusContext';
 import { isRaspberryPi } from '@/utils/deviceDetection';
+import { getMediaType } from '@/utils/mediaType';
 
 /**
  * @component Slideshow
@@ -67,9 +68,15 @@ const Slideshow = () => {
     setTimeout(() => setPaused(false), 200);
   }, [isScheduleActive, navigateMedia]);
 
+  // Videos without an explicit duration (_Xs_ in the filename) play to their end
+  const playsToEnd = Boolean(
+    media && !media.isDynamicView && !media.duration &&
+    !frontendConfig.mediaTypes.loop && getMediaType(media.name) === 'video'
+  );
+
   // Auto-advance timer effect
   useEffect(() => {
-    if (paused || !media || loading || !isScheduleActive) return;
+    if (paused || !media || loading || !isScheduleActive || playsToEnd) return;
 
     const duration = media.duration || frontendConfig.slideshow.defaultSlideDuration;
 
@@ -84,7 +91,7 @@ const Slideshow = () => {
         clearTimeout(autoContinueTimer.current);
       }
     };
-  }, [paused, media, loading, isScheduleActive, handleNavigate]);
+  }, [paused, media, loading, isScheduleActive, playsToEnd, handleNavigate]);
 
   // Add isScheduleActive check to the main render logic
   if (!isScheduleActive) {
@@ -113,7 +120,7 @@ const Slideshow = () => {
             {media.isDynamicView ? (
               <DynamicDailyView key="dynamic-view" />
             ) : (
-              <MediaCanvas key="media" media={media} />
+              <MediaCanvas key="media" media={media} onVideoEnd={playsToEnd ? () => handleNavigate('next') : undefined} />
             )}
             {!isServerConnected && <ConnectionToast />}
           </>

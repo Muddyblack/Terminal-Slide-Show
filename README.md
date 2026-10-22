@@ -93,7 +93,7 @@ Name files in Drive to control when and how long they show:
 | `name_DD-MM-YYYY.ext` | Single date |
 | `name_DD-MM-YYYY@DD-MM-YYYY.ext` | Date range |
 | `name_DD-MM@DD-MM.ext` | Date range, every year |
-| `name_10s_.ext` | Show for 10 seconds |
+| `name_10s_.ext` | Show for 10 seconds (videos without it play until they end) |
 | `name_11h-13h_.ext` | Show only between 11:00 and 13:00 every day |
 | `name_8h30-17h45_.ext` | Minutes are optional: 08:30 to 17:45 |
 
