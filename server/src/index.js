@@ -75,11 +75,10 @@ const staticOptions = {
     etag: true
 };
 
-app.use(express.static(path.join(process.cwd(), 'client', 'public'), staticOptions));
-app.use(express.static(path.join(process.cwd(), 'dist'), staticOptions));
+app.use(express.static(config.paths.clientDist, staticOptions));
 // Media files can be replaced under the same name, so always revalidate.
 // express.static generates ETag/Last-Modified, which makes revalidation cheap (304).
-app.use('/media', express.static(path.join(process.cwd(), config.paths.downloadPath), {
+app.use('/media', express.static(path.resolve(process.cwd(), config.paths.downloadPath), {
     etag: true,
     lastModified: true,
     maxAge: 0,
@@ -151,7 +150,7 @@ app.get('/api/server-status', (req, res) => {
 app.get('/api/quotes', async (req, res) => {
     logger.debug('Fetching random quote');
     try {
-        const quotesData = await fs.readFile(path.join(process.cwd(), 'data', 'quotes.json'), 'utf8');
+        const quotesData = await fs.readFile(path.join(config.paths.dataPath, 'quotes.json'), 'utf8');
         const quotes = JSON.parse(quotesData).quotes;
         const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
         res.json(randomQuote);
@@ -168,7 +167,7 @@ app.get('/api/quotes', async (req, res) => {
 app.get('/api/facts', async (req, res) => {
     logger.debug('Fetching random fact');
     try {
-        const factsData = await fs.readFile(path.join(process.cwd(), 'data', 'facts.json'), 'utf8');
+        const factsData = await fs.readFile(path.join(config.paths.dataPath, 'facts.json'), 'utf8');
         const facts = JSON.parse(factsData);
         const randomFact = facts[Math.floor(Math.random() * facts.length)];
         res.json(randomFact);
@@ -185,7 +184,7 @@ app.get('/api/facts', async (req, res) => {
 app.get('/api/greetings', async (req, res) => {
     logger.debug('Fetching greetings');
     try {
-        const greetingsData = await fs.readFile(path.join(process.cwd(), 'data', 'greetings.json'), 'utf8');
+        const greetingsData = await fs.readFile(path.join(config.paths.dataPath, 'greetings.json'), 'utf8');
         const greetings = JSON.parse(greetingsData);
         res.json(greetings);
     } catch (error) {
@@ -305,7 +304,9 @@ async function fetchWeather(location) {
 
 // Serve index.html for all other routes (SPA support)
 app.get('*', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'client', 'index.html'));
+    res.sendFile(path.join(config.paths.clientDist, 'index.html'), (err) => {
+        if (err) res.sendStatus(404); // Frontend is served elsewhere (e.g. nginx)
+    });
 });
 
 // Server Lifecycle

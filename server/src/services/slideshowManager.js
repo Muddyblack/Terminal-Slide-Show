@@ -40,7 +40,7 @@ export class SlideshowManager {
     /** @private @type {string} */
     this.downloadPath = config.paths.downloadPath;
     /** @private @type {string} */
-    this.mediaPath = path.join(process.cwd(), this.downloadPath);
+    this.mediaPath = path.resolve(process.cwd(), this.downloadPath);
     /** @private @type {MediaFile[]} */
     this.mediaFiles = [];
     /** @private @type {NodeJS.Timeout|null} */

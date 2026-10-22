@@ -44,7 +44,10 @@ export const config = {
     timeout: 5 * 60 * 1000 // standard 5 minutes in milliseconds
   },
   paths: {
-    downloadPath: '../downloads', // Path to download files from Google Drive
+    // Resolved against the working directory, so absolute paths work too
+    downloadPath: process.env.DOWNLOAD_PATH || '../downloads', // Where Google Drive files are stored
+    dataPath: process.env.DATA_PATH || join(__dirname, '../data'), // Quotes, facts and greetings
+    clientDist: process.env.CLIENT_DIST || join(__dirname, '../../client/dist'), // Built frontend, if served by this backend
   },
   logging: {
     level: process.env.LOG_LEVEL || 'warn', // Logging level (debug, info, warn, error)
