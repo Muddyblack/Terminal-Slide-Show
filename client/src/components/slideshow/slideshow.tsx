@@ -25,8 +25,10 @@ import { getMediaType } from '@/utils/mediaType';
  * @returns {JSX.Element} The rendered slideshow component
  */
 const Slideshow = () => {
-  const scheduleEnabled = isRaspberryPi();
-  const isScheduleActive = scheduleEnabled ? useSchedule() : true;
+  // The schedule is only enforced on the kiosk device; other browsers always show the slideshow.
+  // Hooks must run unconditionally, so the result is ignored instead of skipping the call.
+  const scheduleActive = useSchedule();
+  const isScheduleActive = isRaspberryPi() ? scheduleActive : true;
 
   // Cast to unknown first, then to LocalMediaManagerReturn to handle type mismatch
   const mediaManager = useLocalMediaManager(isScheduleActive) as unknown as LocalMediaManagerReturn;
