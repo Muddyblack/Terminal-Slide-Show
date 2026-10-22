@@ -1,271 +1,127 @@
-# Terminal Slide Show
+<div align="center">
 
-A modern, full-featured digital signage solution built with React and Node.js that automatically synchronizes and displays media content from Google Drive. Perfect for information displays, digital signage, and automated presentations.
+<img src="client/public/slideshow.png" alt="Terminal Slideshow" width="520">
+
+**Digital signage that runs itself.**
+Drop images and videos into a Google Drive folder, and your displays pick them up within seconds.
+
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
+![Node 24](https://img.shields.io/badge/node-24-339933?logo=node.js&logoColor=white)
+![React](https://img.shields.io/badge/React-Vite-61dafb?logo=react&logoColor=black)
+
+</div>
 
 ## Features
 
-- 🖼️ Seamless display of images and videos from Google Drive
-- ⚡ Real-time updates via WebSocket connections
-- 📦 Intelligent caching system for optimal performance
-- 🔄 Automatic content synchronization with change detection
-- 📅 Advanced scheduling with vacation periods and daily time windows
-- ⌚ Configurable display times and operating days
-- 🎯 Date-based content targeting through filename parsing
-- 📱 Touch and swipe support for navigation
-- 🖥️ Full kiosk mode support
-- 🎨 Smooth transitions and animations
-- 🌅 Dynamic day/night mode transitions
-- 🌡️ Live weather updates and animations
-- 🚀 NASA Astronomy Picture of the Day integration
-- 📊 Health monitoring and automatic recovery
-- 🔒 Secure operation with minimal dependencies
+- **Google Drive sync**: images and videos are downloaded and cached; changes show up live over WebSocket.
+- **Schedules in filenames**: `notice_15-03@20-03.jpg` only shows on those days.
+- **Display schedule**: on/off times, operating weekdays and vacation periods.
+- **Dynamic daily view**: day/night transitions, weather, NASA picture of the day, quotes and facts.
+- **Kiosk ready**: fullscreen Chromium on a Raspberry Pi, or an MPV terminal mode with no desktop at all.
+- **Touch and swipe** navigation, automatic reconnects and health monitoring.
 
-## Real-Time Updates
+## How it works
 
-The application uses WebSocket connections to provide real-time updates:
-- Instant content updates when files change in Google Drive
-- Live schedule status synchronization
-- Immediate system health notifications
-- Automatic reconnection handling
-- Reduced server load compared to polling
+<img src="docs/architecture.svg" alt="Architecture: Google Drive to Node.js server to React client, shown in a kiosk browser or MPV" width="100%">
 
-## Caching System
+## Quick start
 
-Multi-level caching strategy for optimal performance:
-- **Browser Cache**: 
-  - Media files cached with appropriate headers
-  - Conditional requests using ETags
-  - Cache invalidation on content updates
-
-- **Server-Side Cache**:
-  - Efficient media file storage
-  - Metadata caching for quick access
-  - Automatic cache cleanup
-
-## Prerequisites
-
-- Node.js (v18.0.0 or higher)
-- npm (v8.0.0 or higher)
-- A Google Cloud Platform account
-- For kiosk mode: Debian-based Linux system (e.g., Raspberry Pi OS)
-- WebSocket-capable browser
-
-## Project Structure
-
-```
-terminal-slide-show/
-├── client/                 # Frontend React application
-│   ├── public/            # Static assets
-│   ├── src/
-│   │   ├── components/    # React components
-│   │   │   ├── slideshow/      # Slideshow components
-│   │   │   └── dynamic_daily_view/  # Dynamic view components
-│   │   ├── hooks/        # Custom React hooks
-│   │   │   └── useWebSocket.js # WebSocket connection hook
-│   │   ├── utils/        # Utility functions
-│   │   └── styles/       # CSS stylesheets
-├── server/                # Backend application
-│   ├── config/               # Configuration files
-│   │   ├── config.js        # Main configuration
-│   │   └── frontend.config.js # Frontend-specific config
-│   ├── src/
-│   │   ├── services/     # Core services
-│   │   │   ├── websocket/     # WebSocket server
-│   │   │   └── cache/         # Caching service
-│   │   └── utils/        # Utility functions
-│   └── data/             # Local data (quotes, facts)
-├── scripts/             # Shell scripts
-└── downloads/           # Local media storage
-```
-
-## Setup Instructions
-
-### 1. Installation
+**Requirements:** Node.js 24+, a Google Cloud project with the Drive API enabled. Kiosk mode needs a Debian-based system such as Raspberry Pi OS.
 
 ```bash
-# Clone the repository
-git clone URL
-cd terminal-slide-show
+git clone https://github.com/Muddyblack/Terminal-Slide-Show.git
+cd Terminal-Slide-Show
+npm install && npm install --prefix client && npm install --prefix server
 
-# Install dependencies
-npm install
-
-# Create necessary directories
-mkdir -p downloads logs cache
-
-# Create configuration files
-cp server/config/config.example.js server/config/config.js
-cp server/config/.env.example server/config/.env
+cp server/config/.env.example server/config/.env   # then edit it
+npm run dev
 ```
 
-### 2. Google Drive Authentication
-You have two options for authenticating with Google Drive:
-#### Option A: Using API Key (Simpler, for personal use)
-1. Create a new project in [Google Cloud Console](https://console.cloud.google.com/)
-2. Enable the Google Drive API
-3. Create API credentials:
-   - Go to "APIs & Services" > "Credentials"
-   - Click "Create Credentials" > "API Key"
-   - Copy the API key
-4. Add the API key to `config.js`:
-   ```javascript
-   google: {
-     useServiceAccount: false,
-     apiKey: 'YOUR_API_KEY',
-     folderId: 'YOUR_FOLDER_ID'
-   }
-   ```
-5. Make your Google Drive folder publicly accessible (with link)
-#### Option B: Using Service Account (More secure, recommended for production)
-1. Create a new project in [Google Cloud Console](https://console.cloud.google.com/)
-2. Enable the Google Drive API
-3. Create a Service Account:
-   - Navigate to "IAM & Admin" > "Service Accounts"
-   - Click "Create Service Account"
-   - Grant the role "Drive File Viewer" or necessary permissions
-   - Create and download JSON key
-4. Place the downloaded JSON key in `server/config/service-account.json`
-5. Share your Google Drive folder with the service account email
-6. Configure `config.js`:
-   ```javascript
-   google: {
-     useServiceAccount: true,
-     serviceAccountPath: './config/service-account.json',
-     folderId: 'YOUR_FOLDER_ID'
-   }
-   ```
+The client runs on <http://localhost:5173>, the API on port 3000.
 
-### 3. Cache Configuration
+### Docker
 
-Configure caching behavior in `config.js`:
-
-```javascript
-cache: {
-  // Browser cache settings
-  browser: {
-    maxAge: 86400,        // Cache lifetime in seconds
-    revalidate: true,     // Enable revalidation
-    etags: true           // Enable ETag support
-  },
-  // Server cache settings
-  server: {
-    mediaCache: {
-      maxSize: '1GB',     // Maximum cache size
-      cleanupInterval: '1h' // Cache cleanup interval
-    },
-    metadataCache: {
-      ttl: 300,           // Time-to-live in seconds
-      checkPeriod: 600    // Cleanup check interval
-    }
-  }
-}
+```bash
+docker compose up -d --build
 ```
 
-### 4. WebSocket Configuration
+The frontend is served on port 5173 and the backend on 3000. `downloads/` and `server/config/` are mounted into the backend container.
 
-Configure WebSocket behavior in `config.js`:
+A Nix dev shell is available via `nix develop`.
 
-```javascript
-websocket: {
-  // WebSocket server settings
-  server: {
-    port: 3001,
-    heartbeat: 30000,     // Heartbeat interval
-    reconnectTimeout: 5000 // Client reconnection timeout
-  },
-  // Client settings
-  client: {
-    reconnectAttempts: 5,
-    reconnectInterval: 1000,
-    messageTimeout: 5000
-  }
-}
-```
+## Configuration
 
-## File Naming Convention
-Files in Google Drive should follow this naming pattern to enable scheduling:
-- Single date: `filename_DD-MM-YYYY.ext`
-- Date range: `filename_DD-MM-YYYY@DD-MM-YYYY.ext`
-- Short format: `filename_DD-MM@DD-MM.ext`
-- Custom duration: `filename_Xs.ext` (where X is duration in seconds)
+Secrets and per-machine values live in `server/config/.env`:
 
-It is possible to also use just `YY` and use any of these separators: `-._`
-You can combine both date and duration patterns:
-Examples:
-```
-banner_01-01-2024@31-01-2024.jpg  # Show in January 2024
-notice_15-03.jpg                  # Show on March 15th (any year)
-event_01-06@15-06.jpg            # Show June 1-15 (any year)
+| Variable | Purpose |
+| --- | --- |
+| `GOOGLE_FOLDER_ID` | Drive folder to sync |
+| `GOOGLE_SERVICE_ACCOUNT` | Path to the service account JSON key |
+| `GOOGLE_API_KEY` | Alternative to the service account (public folders only) |
+| `NASA_API_KEY` | Optional, enables the picture of the day |
+| `LOCATION` | Used for weather |
+| `KIOSK_URL`, `KIOSK_USER`, `KIOSK_PASSWORD` | Kiosk mode |
+| `BACKEND_HOST/PORT`, `FRONTEND_HOST/PORT` | Bind addresses |
+| `LOG_LEVEL` | `debug`, `info`, `warn` or `error` |
 
-image_5s_25-12-2024.jpg    ✅ (works)
-image_10s_.jpg             ✅ (works)
-image5s_25-12-2024.jpg     ❌ (won't work - missing leading _)
-image_5s25-12-2024.jpg     ❌ (won't work - missing trailing _)
-```
+Behaviour (slide duration, schedule, media types, WebSocket timings) is set in [`server/config/frontend.config.js`](server/config/frontend.config.js):
 
-## Scheduling
-
-Configure display times in `config.js`:
-
-```javascript
+```js
 schedule: {
   enabled: true,
-  onTime: '06:30',      // Display start time
-  offTime: '20:00',     // Display end time
-  days: [1, 2, 3, 4, 5], // Monday to Friday
-  vacationPeriods: [    // Optional vacation periods
-    { start: '24.06.2024', end: '24.07.2024' }
-  ]
-
-}
+  onTime: '07:35',
+  offTime: '19:30',
+  days: [1, 2, 3, 4, 5],              // Monday to Friday
+  vacationPeriods: [{ start: '24.06.2024', end: '24.07.2024' }],
+},
 ```
 
-## WebSocket Events
+### Google Drive access
 
-The application supports the following WebSocket events:
+1. Create a project in the [Google Cloud Console](https://console.cloud.google.com/) and enable the **Drive API**.
+2. Pick one:
+   - **Service account (recommended):** create one, download the JSON key, share your Drive folder with its email, and set `GOOGLE_SERVICE_ACCOUNT`.
+   - **API key:** create a key, make the folder public via link, set `GOOGLE_API_KEY`, and set `useServiceAccount: false` in `server/config/config.js`.
+3. Set `GOOGLE_FOLDER_ID` to the ID from the folder URL.
 
-```javascript
-// Client-side subscription
-ws.subscribe('media-update', (data) => {
-  // Handle media updates
-});
+## File naming
 
-ws.subscribe('schedule-update', (data) => {
-  // Handle schedule changes
-});
+Name files in Drive to control when and how long they show:
 
-ws.subscribe('system-health', (data) => {
-  // Handle system health updates
-});
+| Pattern | Meaning |
+| --- | --- |
+| `name_DD-MM-YYYY.ext` | Single date |
+| `name_DD-MM-YYYY@DD-MM-YYYY.ext` | Date range |
+| `name_DD-MM@DD-MM.ext` | Date range, every year |
+| `name_10s_.ext` | Show for 10 seconds |
+
+Years may be two digits, and `-`, `.` or `_` work as separators. Duration and dates can be combined. The `_` on both sides of the duration is required.
+
+```
+banner_01-01-2024@31-01-2024.jpg   January 2024 only
+event_01-06@15-06.jpg              June 1-15, any year
+image_5s_25-12-2024.jpg            works
+image5s_25-12-2024.jpg             ignored, missing leading _
 ```
 
-## Cache Headers
+## Kiosk mode
 
-The application sets appropriate cache headers for different types of content:
+`scripts/installer.sh` sets up a locked-down kiosk user with autologin on Debian-based systems, in either `web` (Chromium) or `terminal` (MPV) mode. `scripts/kiosk.sh` and `scripts/terminal-slide-show.sh` launch the display.
 
-```javascript
-// Example cache headers for media files
-{
-  'Cache-Control': 'public, max-age=86400',
-  'ETag': true,
-  'Last-Modified': timestamp
-}
+## API
 
-// Example cache headers for dynamic content
-{
-  'Cache-Control': 'no-cache, must-revalidate',
-  'ETag': true
-}
-```
+| Endpoint | Description |
+| --- | --- |
+| `GET /api/all-media` | Current media list |
+| `GET /api/server-status` | Sync and schedule state |
+| `GET /api/quotes`, `/facts`, `/greetings` | Daily view content |
+| `GET /api/weather`, `/nasa-apod` | Weather and picture of the day |
+| `WS /ws` | Live media, schedule and health updates |
 
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
+[GPL-3.0](LICENSE)

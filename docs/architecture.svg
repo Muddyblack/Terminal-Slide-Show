@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 260" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#8c8c6c"/>
+    </marker>
+  </defs>
+  <rect width="900" height="260" rx="14" fill="#1e1f1a"/>
+  <g fill="#2b2c24" stroke="#8c8c6c" stroke-width="2">
+    <rect x="30" y="85" width="170" height="90" rx="10"/>
+    <rect x="265" y="85" width="170" height="90" rx="10"/>
+    <rect x="500" y="85" width="170" height="90" rx="10"/>
+    <rect x="715" y="30" width="155" height="90" rx="10"/>
+    <rect x="715" y="140" width="155" height="90" rx="10"/>
+  </g>
+  <g fill="#e0e2b0" text-anchor="middle" font-size="17" font-weight="600">
+    <text x="115" y="125">Google Drive</text>
+    <text x="350" y="125">Node.js server</text>
+    <text x="585" y="125">React client</text>
+    <text x="792" y="70">Kiosk browser</text>
+    <text x="792" y="180">MPV terminal</text>
+  </g>
+  <g fill="#b5b794" text-anchor="middle" font-size="13">
+    <text x="115" y="147">images &amp; videos</text>
+    <text x="350" y="147">sync · cache · schedule</text>
+    <text x="585" y="147">slides · weather · APOD</text>
+    <text x="792" y="92">Chromium, fullscreen</text>
+    <text x="792" y="202">no GUI needed</text>
+  </g>
+  <g stroke="#8c8c6c" stroke-width="2" fill="none" marker-end="url(#a)">
+    <path d="M200 130H263"/>
+    <path d="M435 130H498"/>
+    <path d="M670 115L713 85"/>
+    <path d="M350 175V215H713" />
+  </g>
+  <g fill="#b5b794" font-size="12" text-anchor="middle">
+    <text x="232" y="120">API / poll</text>
+    <text x="467" y="120">REST + WS</text>
+  </g>
+</svg>
