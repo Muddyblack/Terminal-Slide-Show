@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ RUN apk add --no-cache su-exec
 # Copy server package files first for better caching
 COPY server/package*.json ./server/
 WORKDIR /app/server
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Return to root to copy source code
 WORKDIR /app
