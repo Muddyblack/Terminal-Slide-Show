@@ -1,9 +1,23 @@
 import { DateParser } from './dateParser.js';
 
 /**
+ * Checks if the given time falls inside a daily window.
+ * Windows that cross midnight (e.g. 22h-2h) are supported.
+ */
+function isInTimeWindow({ startMinutes, endMinutes }, now) {
+    const current = now.getHours() * 60 + now.getMinutes();
+    if (startMinutes <= endMinutes) {
+        return current >= startMinutes && current < endMinutes;
+    }
+    return current >= startMinutes || current < endMinutes;
+}
+
+/**
  * Validates if a filename's embedded dates are valid for current display
  * @param {string} filename - Filename to validate (e.g., "01-01-2024.jpg" or "01-01@31-12.jpg")
- * @returns {boolean} True if file should be displayed based on current date
+ * @param {Object} [options]
+ * @param {boolean} [options.ignoreTime=false] - Skip the daily time window check (e.g. when syncing files ahead of time)
+ * @returns {boolean} True if file should be displayed based on current date and time
  * 
  * @example
  * // Single date file (must be today)
@@ -13,14 +27,18 @@ import { DateParser } from './dateParser.js';
  * // Date range
  * isValidFile("01-01-2024@31-12-2024.jpg") // true if current date is within 2024
  */
-export function isValidFile(filename) {
-    const parsedDate = DateParser.parseFileName(filename);
-    if (!parsedDate || !parsedDate.startDate) {
+export function isValidFile(filename, { ignoreTime = false } = {}) {
+    const { startDate, endDate, timeWindow } = DateParser.parseFileName(filename);
+    const now = new Date();
+
+    if (timeWindow && !ignoreTime && !isInTimeWindow(timeWindow, now)) {
         return false;
     }
 
-    const now = new Date();
-    const { startDate, endDate } = parsedDate;
+    // A time window without a date applies every day
+    if (!startDate) {
+        return Boolean(timeWindow);
+    }
 
     // Helper to compare only dates, ignoring time
     const isSameDay = (date1, date2) => {
@@ -30,7 +48,7 @@ export function isValidFile(filename) {
                date1.getDate() === date2.getDate();
     };
 
-    if (!startDate || (startDate > now && !isSameDay(startDate, now))) {
+    if (startDate > now && !isSameDay(startDate, now)) {
         return false;
     }
 

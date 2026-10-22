@@ -32,6 +32,7 @@ export interface Dimensions {
 
 export interface VideoPlayerProps {
   media: MediaItem;
+  onEnded?: () => void;
 }
 
 export interface ImageCanvasProps {
@@ -41,4 +42,5 @@ export interface ImageCanvasProps {
 
 export interface MediaCanvasProps {
   media: MediaItem;
+  onVideoEnd?: () => void;
 }

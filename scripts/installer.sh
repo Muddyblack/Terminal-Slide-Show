@@ -117,6 +117,47 @@ select_mode() {
     done
 }
 # -----------------------------------------------------------------------------
+# Off-hours behavior menu (terminal mode)
+# -----------------------------------------------------------------------------
+select_off_mode() {
+    local options=("Black screen (monitor stays on)" "Cut HDMI output (monitor powered by schedule)")
+    local selected=0
+    local key=""
+
+    tput civis
+
+    while true; do
+        clear
+        echo "What should the display do outside operating hours?"
+        echo ""
+
+        for i in "${!options[@]}"; do
+            if [ $i -eq $selected ]; then
+                echo -e "→ ${options[$i]}"
+            else
+                echo "  ${options[$i]}"
+            fi
+        done
+
+        echo ""
+        echo "Note: some monitors stay in standby and do not wake after the signal is cut."
+        echo "The slideshow re-enables the output at the configured on-time."
+
+        read -s -n 1 key
+
+        case "$key" in
+            "A") [ $selected -gt 0 ] && selected=$((selected - 1)) ;;
+            "B") [ $selected -lt $((${#options[@]} - 1)) ] && selected=$((selected + 1)) ;;
+            "")
+                tput cnorm
+                [ $selected -eq 1 ] && DISPLAY_OFF_MODE="power" || DISPLAY_OFF_MODE="black"
+                return 0
+                ;;
+        esac
+    done
+}
+
+# -----------------------------------------------------------------------------
 # Package management
 # -----------------------------------------------------------------------------
 install_packages() {
@@ -233,6 +274,13 @@ copy_kiosk_files() {
             return 1
         fi
         log_info "npm dependencies installed successfully"
+
+        # Persist the off-hours behavior in the kiosk copy of the env file
+        local env_file="$home_dir/server/config/.env"
+        sudo touch "$env_file"
+        sudo sed -i '/^DISPLAY_OFF_MODE=/d' "$env_file"
+        echo "DISPLAY_OFF_MODE=${DISPLAY_OFF_MODE:-black}" | sudo tee -a "$env_file" > /dev/null
+        sudo chown "$username:$username" "$env_file"
     fi
 }
 
@@ -314,6 +362,11 @@ main() {
     # Select installation mode
     select_mode
     log_info "Selected mode: $SELECTED_MODE"
+
+    # Off-hours behavior is only handled by the terminal mode script
+    DISPLAY_OFF_MODE="black"
+    [ "$SELECTED_MODE" = "$MODE_TERMINAL" ] && select_off_mode
+    log_info "Off-hours display mode: $DISPLAY_OFF_MODE"
 
     # Install required packages
     local packages="$([[ $SELECTED_MODE = $MODE_WEB ]] && echo "$WEB_PACKAGES" || echo "$TERMINAL_PACKAGES")"

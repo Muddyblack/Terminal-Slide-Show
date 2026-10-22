@@ -4,6 +4,7 @@ import PropTypes from 'prop-types';
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 
 import { MediaCanvasProps, VideoPlayerProps, ImageCanvasProps, Dimensions } from '@/components/slideshow/types';
+import { getMediaType } from '@/utils/mediaType';
 
 /**
  * Constants for animation and styling
@@ -28,32 +29,22 @@ const getMediaUrl = (name: string): string => {
 };
 
 /**
- * Determines media type from filename
- * @param {string} filename - Name of the media file
- * @returns {'image'|'gif'|'video'} Media type
- */
-const getMediaType = (filename: string): 'image' | 'gif' | 'video' => {
-  if (!filename) return 'image';
-  const extension = filename.toLowerCase().split('.').pop() || '';
-  if (extension === 'gif') return 'gif';
-  if (frontendConfig.mediaTypes.videoTypes.some((type: string) => type.includes(extension))) return 'video';
-  return 'image';
-};
-
-/**
  * Canvas-based image renderer with blur effect background
  * @component
  * @param {Object} props
  * @param {Object} props.media - Media object containing image details
  * @param {'image'|'gif'} props.mediaType - Type of image media
  */
-const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ media }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ media, onEnded }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const onEndedRef = useRef(onEnded);
+  onEndedRef.current = onEnded;
 
   const handleVideoEnd = useCallback(() => {
     if (!frontendConfig.mediaTypes.loop && videoRef.current) {
       videoRef.current.currentTime = videoRef.current.duration;
     }
+    onEndedRef.current?.();
   }, []);
 
   useEffect(() => {
@@ -75,6 +66,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ media }) => {
       autoPlay={frontendConfig.mediaTypes.autoplay}
       loop={frontendConfig.mediaTypes.loop}
       onEnded={handleVideoEnd}
+      onError={() => onEndedRef.current?.()}
       src={getMediaUrl(media.name)}
     />
   );
@@ -304,7 +296,7 @@ const ImageCanvas: React.FC<ImageCanvasProps> = React.memo(({ media, mediaType }
  * @param {string} props.media.name - Filename of media
  * @param {string} props.media.url - URL of media resource
  */
-const MediaCanvas: React.FC<MediaCanvasProps> = React.memo(({ media }) => {
+const MediaCanvas: React.FC<MediaCanvasProps> = React.memo(({ media, onVideoEnd }) => {
   // Memoize media type calculation
   const mediaType = useMemo(() =>
     media?.name ? getMediaType(media.name) : 'image',
@@ -317,7 +309,7 @@ const MediaCanvas: React.FC<MediaCanvasProps> = React.memo(({ media }) => {
     <AnimatePresence mode="sync">
       {mediaType === 'video' ? (
         // Give a unique key so that on change the exit/enter transitions run
-        <VideoPlayer media={media} key={`video-${media.id || media.name}`} />
+        <VideoPlayer media={media} onEnded={onVideoEnd} key={`video-${media.id || media.name}`} />
       ) : (
         <ImageCanvas media={media} mediaType={mediaType} key={`image-${media.id || media.name}`} />
       )}
@@ -329,7 +321,8 @@ const MediaCanvas: React.FC<MediaCanvasProps> = React.memo(({ media }) => {
     return (
       prevProps.media?.id === nextProps.media?.id &&
       prevProps.media?.name === nextProps.media?.name &&
-      prevProps.media?.url === nextProps.media?.url
+      prevProps.media?.url === nextProps.media?.url &&
+      prevProps.onVideoEnd === nextProps.onVideoEnd
     );
   });
 
