@@ -1,4 +1,4 @@
-import { frontendConfig } from '@config/frontend.config';
+import { frontendConfig } from '@/config';
 import { Calendar, Quote, Coffee, MapPin, Clock, Info } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
