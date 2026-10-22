@@ -81,50 +81,14 @@ const staticOptions = {
 
 app.use(express.static(path.join(process.cwd(), 'client', 'public'), staticOptions));
 app.use(express.static(path.join(process.cwd(), 'dist'), staticOptions));
-app.use('/media', (req, res, next) => {
-    // Cache for 1 year
-    res.set({
-        'Cache-Control': 'public, max-age=31536000',
-        'ETag': true
-    });
-    next();
-}, express.static(path.join(process.cwd(), config.paths.downloadPath)));
-
-// conditional requests for media files
-app.use('/media', (req, res, next) => {
-    (async () => {
-        try {
-            const mediaRoot = path.join(process.cwd(), config.paths.downloadPath);
-            // Decode URL-encoded characters (e.g., %20 -> space) before resolving file path
-            const decodedUrl = decodeURIComponent(req.url);
-            const filePath = path.resolve(mediaRoot, '.' + decodedUrl);
-
-            if (!filePath.startsWith(mediaRoot + path.sep)) {
-                return res.sendStatus(403);
-            }
-
-            // Generate ETag from file stats
-            const stats = await fs.stat(filePath);
-
-            const etag = `W/"${stats.size}-${stats.mtime.getTime()}"`;
-            res.set('ETag', etag);
-
-            // Check if client's cached version matches
-            if (req.headers['if-none-match'] === etag) {
-                return res.sendStatus(304); // Not Modified
-            }
-
-            res.set({
-                'Cache-Control': 'public, max-age=31536000',
-                'Last-Modified': stats.mtime.toUTCString()
-            });
-
-            next();
-        } catch (err) {
-            next();
-        }
-    })();
-}, express.static(path.join(process.cwd(), config.paths.downloadPath)));
+// Media files can be replaced under the same name, so always revalidate.
+// express.static generates ETag/Last-Modified, which makes revalidation cheap (304).
+app.use('/media', express.static(path.join(process.cwd(), config.paths.downloadPath), {
+    etag: true,
+    lastModified: true,
+    maxAge: 0,
+    setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache')
+}));
 
 // Security Middleware
 /* ------------------------------------ */
