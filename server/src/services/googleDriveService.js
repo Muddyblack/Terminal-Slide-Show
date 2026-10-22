@@ -170,7 +170,9 @@ export class GoogleDriveService {
    */
   async listFiles() {
     const files = await this.fetchFilesFromDrive();
-    const validFiles = files.filter(file => isValidFile(file.name, { ignoreTime: true }));
+    // Drive names may contain path separators; never let them leave the download folder
+    const validFiles = files.filter(file =>
+        path.basename(file.name) === file.name && isValidFile(file.name, { ignoreTime: true }));
     return validFiles;
   }
 
