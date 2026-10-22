@@ -1,4 +1,4 @@
-import { frontendConfig } from '@config/frontend.config';
+import { frontendConfig } from '@/config';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 
 import '@/styles/testPage.css';

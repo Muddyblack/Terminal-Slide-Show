@@ -1,4 +1,4 @@
-import { frontendConfig } from '@config/frontend.config';
+import { frontendConfig } from '@/config';
 import { MapPin, Camera } from 'lucide-react';
 import { useState, useEffect, type CSSProperties } from 'react';
 

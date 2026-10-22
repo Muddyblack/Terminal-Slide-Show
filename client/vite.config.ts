@@ -33,6 +33,12 @@ export default defineConfig({
         ws: true,
         changeOrigin: true,
       },
+      '/config.js': {
+        target: isDevelopment
+          ? `http://localhost:${process.env.BACKEND_PORT}`
+          : `http://backend:${process.env.BACKEND_PORT}`,
+        changeOrigin: true,
+      },
       '/media': {
         target: isDevelopment
           ? `http://localhost:${process.env.BACKEND_PORT}`

@@ -1,4 +1,4 @@
-import { frontendConfig } from '@config/frontend.config';
+import { frontendConfig } from '@/config';
 import { useState, useCallback, useEffect, useRef } from 'react';
 
 import { NavigationDirection } from '@/components/slideshow/types';
