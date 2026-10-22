@@ -66,6 +66,8 @@ slideshow_ssh_port: 22
 # (Tailscale or WireGuard) and list its range here.
 slideshow_ssh_allowed_cidrs: []
 slideshow_firewall: true
+# Answer mDNS (so "name.local" finds the device on the local network)
+slideshow_allow_mdns: true
 # Networks that may reach the backend port (only needed if other devices use
 # this one as their central server).
 slideshow_backend_allowed_cidrs: []

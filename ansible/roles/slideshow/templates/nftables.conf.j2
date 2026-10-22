@@ -19,6 +19,12 @@ table inet slideshow {
         ip protocol icmp icmp type { echo-request, destination-unreachable, time-exceeded } limit rate 10/second accept
         ip6 nexthdr icmpv6 limit rate 50/second accept
 
+{% if slideshow_allow_mdns | bool %}
+        # mDNS, so the device can be found as <hostname>.local
+        ip daddr 224.0.0.251 udp dport 5353 accept
+        ip6 daddr ff02::fb udp dport 5353 accept
+{% endif %}
+
         # DHCP replies
         udp sport 67 udp dport 68 accept
         udp sport 547 udp dport 546 accept
