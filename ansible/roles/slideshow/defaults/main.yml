@@ -1,0 +1,102 @@
+---
+# ---------------------------------------------------------------------------
+# What to install
+# ---------------------------------------------------------------------------
+
+# Release to run, e.g. "1.0.0" (the Git tag without the "v"). Required for
+# devices that run the backend. Changing it and re-running updates the device.
+slideshow_version: ""
+slideshow_release_url: >-
+  https://github.com/Muddyblack/Terminal-Slide-Show/releases/download/v{{ slideshow_version }}/terminal-slide-show-{{ slideshow_version }}.tar.gz
+# SHA-256 of the tarball. Pin it: a device then only ever runs the exact build
+# you reviewed. When empty, the .sha256 file published with the release is used.
+slideshow_release_sha256: ""
+slideshow_keep_releases: 3
+
+# browser: Chromium in a single-app Wayland compositor (cage), full daily view
+# mpv:     MPV plays the media only, much lighter (good for a Pi 3)
+# none:    no display, backend only (a central server)
+slideshow_display_mode: browser
+
+# local:  this device runs the backend and syncs Google Drive itself
+# remote: display only; media and settings come from slideshow_backend_url
+slideshow_backend_mode: local
+slideshow_backend_url: ""
+slideshow_backend_host: 127.0.0.1
+slideshow_backend_port: 3000
+
+# ---------------------------------------------------------------------------
+# Settings shown on this device (merged into the app's config.json)
+# ---------------------------------------------------------------------------
+
+# Same keys as server/config/frontend.config.js: schedule, locale, dailyView,
+# info, branding, slideshow, mediaTypes ...
+slideshow_settings: {}
+# Per-device overrides, merged on top of slideshow_settings. Use this in
+# host_vars: Ansible replaces a dict of the same name instead of merging it.
+slideshow_settings_override: {}
+# Shorthand for info.location
+slideshow_location: ""
+
+# Secrets. Keep these in an Ansible Vault file, never in plain text.
+slideshow_google_folder_id: ""
+slideshow_google_service_account: ""   # contents of the service account JSON key
+slideshow_google_api_key: ""           # alternative for public folders
+slideshow_nasa_api_key: ""
+
+# Optional folder on your machine with custom quotes.json, facts.json and
+# greetings.json (flat, or in de/ and en/ subfolders). Copied to the device.
+slideshow_content_dir: ""
+
+# ---------------------------------------------------------------------------
+# Access and network security
+# ---------------------------------------------------------------------------
+
+# The account Ansible logs in as (it needs sudo). Created by the Raspberry Pi
+# Imager or by you; this role does not create it.
+slideshow_admin_user: ""
+slideshow_admin_ssh_keys: []
+slideshow_harden_ssh: true
+slideshow_ssh_port: 22
+# Only these networks may reach SSH. Empty means anywhere, so prefer a VPN
+# (Tailscale or WireGuard) and list its range here.
+slideshow_ssh_allowed_cidrs: []
+slideshow_firewall: true
+# Networks that may reach the backend port (only needed if other devices use
+# this one as their central server).
+slideshow_backend_allowed_cidrs: []
+
+# ---------------------------------------------------------------------------
+# Display
+# ---------------------------------------------------------------------------
+
+slideshow_kiosk_user: slideshow-kiosk
+# Extra Chromium flags, e.g. ["--disable-gpu"] if a Pi 3 shows glitches
+slideshow_chromium_flags: []
+slideshow_mpv_args: "--vo=gpu --gpu-context=drm"
+# How the screen itself is switched off outside the schedule. "none" leaves the
+# panel on and relies on the black screen. See the README before using the others.
+#   none | vcgencmd | wlr-randr | cec | command
+slideshow_display_power_method: none
+slideshow_display_output: HDMI-A-1       # wlr-randr only
+slideshow_display_power_on_command: ""   # method "command" only
+slideshow_display_power_off_command: ""
+
+# ---------------------------------------------------------------------------
+# Upkeep
+# ---------------------------------------------------------------------------
+
+# security: install security updates automatically; all: everything; none: manual
+slideshow_updates: security
+# Time (HH:MM) to reboot every day. Applies kernel and firmware updates.
+slideshow_daily_reboot: ""
+# Reboot at this time (HH:MM) only if an update asks for it
+slideshow_reboot_if_required: ""
+# Hardware watchdog: reboot automatically if the system hangs
+slideshow_watchdog: true
+# Keep logs in RAM to spare the SD card
+slideshow_volatile_logs: true
+# Experimental: run the root filesystem read-only (overlay). Needs a separate
+# data partition for the media, see slideshow_data_device and the README.
+slideshow_readonly_root: false
+slideshow_data_device: ""   # e.g. /dev/mmcblk0p3 (ext4), mounted at /var/lib/slideshow

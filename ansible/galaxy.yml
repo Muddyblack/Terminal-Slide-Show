@@ -1,0 +1,19 @@
+---
+namespace: muddyblack
+name: terminal_slideshow
+version: 0.1.0
+readme: README.md
+authors:
+  - Muddyblack
+description: Deploy and manage Terminal Slide Show on a fleet of Raspberry Pis (3, 4 and 5).
+license:
+  - GPL-3.0-or-later
+repository: https://github.com/Muddyblack/Terminal-Slide-Show
+tags:
+  - raspberry_pi
+  - digital_signage
+  - kiosk
+dependencies:
+  ansible.posix: ">=1.5.0"
+build_ignore:
+  - example

@@ -1,0 +1,71 @@
+---
+- name: Work out the packages to install
+  ansible.builtin.set_fact:
+    slideshow_packages: >-
+      {{ _slideshow_packages.base
+         + (_slideshow_packages.backend if slideshow_backend_mode == 'local' else [])
+         + (_slideshow_packages.firewall if slideshow_firewall | bool else [])
+         + (_slideshow_packages.browser if slideshow_display_mode == 'browser' else [])
+         + (_slideshow_packages.mpv if slideshow_display_mode == 'mpv' else [])
+         + (_slideshow_packages.power[slideshow_display_power_method] if slideshow_display_mode != 'none' else []) }}
+
+- name: Install packages
+  ansible.builtin.apt:
+    name: "{{ slideshow_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+    install_recommends: false
+
+- name: Read the installed Node.js version
+  ansible.builtin.command: node --print "process.versions.node.split('.')[0]"
+  register: slideshow_node_major
+  changed_when: false
+  check_mode: false
+  when: slideshow_backend_mode == 'local'
+
+- name: Check the Node.js version
+  ansible.builtin.assert:
+    that: slideshow_node_major.stdout | int >= 20
+    fail_msg: >-
+      Node.js {{ slideshow_node_major.stdout }} is too old, the backend needs 20 or newer.
+      Use Raspberry Pi OS based on Debian 13 (trixie).
+    quiet: true
+  when: slideshow_backend_mode == 'local'
+
+- name: Create the backend user
+  ansible.builtin.user:
+    name: "{{ slideshow_backend_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ slideshow_state_dir }}"
+    create_home: false
+  when: slideshow_backend_mode == 'local'
+
+- name: Create the kiosk user (locked, no password, no shell)
+  ansible.builtin.user:
+    name: "{{ slideshow_kiosk_user }}"
+    shell: /usr/sbin/nologin
+    home: /var/lib/{{ slideshow_kiosk_user }}
+    create_home: true
+    password_lock: true
+    groups: [video, render, audio]
+    append: true
+  when: slideshow_display_mode != 'none'
+
+- name: Create the config directory
+  ansible.builtin.file:
+    path: "{{ slideshow_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Mount the data partition
+  ansible.posix.mount:
+    path: "{{ slideshow_state_dir }}"
+    src: "{{ slideshow_data_device }}"
+    fstype: ext4
+    opts: defaults,noatime,nofail
+    state: mounted
+  when: slideshow_data_device | length > 0

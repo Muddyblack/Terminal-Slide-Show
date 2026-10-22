@@ -1,0 +1,127 @@
+---
+- name: Create the install and state directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.owner }}"
+    mode: "0755"
+  loop:
+    - { path: "{{ slideshow_install_dir }}", owner: root }
+    - { path: "{{ slideshow_install_dir }}/releases", owner: root }
+    - { path: "{{ slideshow_state_dir }}", owner: "{{ slideshow_backend_user }}" }
+
+- name: Work out the release directory
+  ansible.builtin.set_fact:
+    slideshow_release_dir: "{{ slideshow_install_dir }}/releases/terminal-slide-show-{{ slideshow_version }}"
+
+- name: Check whether this release is already unpacked
+  ansible.builtin.stat:
+    path: "{{ slideshow_release_dir }}/VERSION"
+  register: slideshow_release_stat
+
+- name: Download the release and verify its checksum
+  ansible.builtin.get_url:
+    url: "{{ slideshow_release_url }}"
+    dest: "/var/cache/terminal-slide-show-{{ slideshow_version }}.tar.gz"
+    checksum: "sha256:{{ slideshow_release_sha256 if slideshow_release_sha256 | length > 0 else slideshow_release_url ~ '.sha256' }}"
+    owner: root
+    mode: "0644"
+  when: not slideshow_release_stat.stat.exists
+
+- name: Unpack the release
+  ansible.builtin.unarchive:
+    src: "/var/cache/terminal-slide-show-{{ slideshow_version }}.tar.gz"
+    dest: "{{ slideshow_install_dir }}/releases"
+    remote_src: true
+    owner: root
+    group: root
+  when: not slideshow_release_stat.stat.exists
+
+- name: Remove the downloaded archive
+  ansible.builtin.file:
+    path: "/var/cache/terminal-slide-show-{{ slideshow_version }}.tar.gz"
+    state: absent
+
+- name: Point "current" at this release
+  ansible.builtin.file:
+    src: "{{ slideshow_release_dir }}"
+    dest: "{{ slideshow_install_dir }}/current"
+    state: link
+  notify: Restart the backend
+
+- name: Find old releases
+  ansible.builtin.find:
+    paths: "{{ slideshow_install_dir }}/releases"
+    patterns: "terminal-slide-show-*"
+    file_type: directory
+  register: slideshow_old_releases
+
+- name: Remove releases beyond the ones to keep
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: >-
+    {{ (slideshow_old_releases.files | sort(attribute='mtime', reverse=true))[(slideshow_keep_releases | int):]
+       | rejectattr('path', 'equalto', slideshow_release_dir) | list }}
+  loop_control:
+    label: "{{ item.path }}"
+
+- name: Write the app settings
+  ansible.builtin.copy:
+    content: "{{ slideshow_effective_settings | to_nice_json }}\n"
+    dest: "{{ slideshow_config_dir }}/config.json"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart the backend
+
+- name: Write the backend secrets
+  ansible.builtin.template:
+    src: backend.env.j2
+    dest: "{{ slideshow_config_dir }}/backend.env"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  notify: Restart the backend
+
+- name: Write the Google service account key
+  ansible.builtin.copy:
+    content: "{{ slideshow_google_service_account }}\n"
+    dest: "{{ slideshow_config_dir }}/google-service-account.json"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  when: slideshow_google_service_account | length > 0
+  notify: Restart the backend
+
+- name: Copy custom content (quotes, facts, greetings)
+  ansible.builtin.copy:
+    src: "{{ slideshow_content_dir | trim('/') }}/"
+    dest: "{{ slideshow_state_dir }}/content/"
+    owner: root
+    group: root
+    mode: "0644"
+    directory_mode: "0755"
+  when: slideshow_content_dir | length > 0
+  notify: Restart the backend
+
+- name: Install the backend service
+  ansible.builtin.template:
+    src: slideshow-backend.service.j2
+    dest: /etc/systemd/system/slideshow-backend.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart the backend
+
+- name: Enable and start the backend
+  ansible.builtin.systemd_service:
+    name: slideshow-backend
+    enabled: true
+    state: started
+    daemon_reload: true

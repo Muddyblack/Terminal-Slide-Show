@@ -1,0 +1,57 @@
+---
+# Prints a one-line summary per device. Changes nothing.
+#   ansible-playbook muddyblack.terminal_slideshow.status
+- name: Report the state of Terminal Slide Show devices
+  hosts: slideshow
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Read the app version
+      ansible.builtin.command: cat /opt/terminal-slideshow/current/VERSION
+      register: status_app
+      changed_when: false
+      failed_when: false
+
+    - name: Read the Chromium version
+      ansible.builtin.command: chromium --version
+      register: status_chromium
+      changed_when: false
+      failed_when: false
+
+    - name: Count pending updates
+      ansible.builtin.shell: set -o pipefail; apt-get --simulate upgrade | grep -c '^Inst' || true
+      args:
+        executable: /bin/bash
+      register: status_updates
+      changed_when: false
+
+    - name: Check whether a reboot is waiting
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: status_reboot
+
+    - name: Check the services
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+      loop: [slideshow-backend, slideshow-display]
+      register: status_services
+      failed_when: false
+
+    - name: Read the model
+      ansible.builtin.command: cat /proc/device-tree/model
+      register: status_model
+      changed_when: false
+      failed_when: false
+
+    - name: Summary
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}: {{ status_model.stdout | default('?') | regex_replace('\x00', '') }} |
+          app {{ status_app.stdout | default('-') }} |
+          {{ status_chromium.stdout | default('no chromium') }} |
+          kernel {{ ansible_facts['kernel'] }} |
+          up {{ (ansible_facts['uptime_seconds'] / 3600) | round(1) }} h |
+          {{ status_updates.stdout }} updates pending |
+          reboot {{ 'WAITING' if status_reboot.stat.exists else 'not needed' }} |
+          backend {{ status_services.results[0].status.ActiveState | default('-') }},
+          display {{ status_services.results[1].status.ActiveState | default('-') }}

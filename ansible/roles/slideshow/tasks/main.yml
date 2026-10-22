@@ -1,0 +1,47 @@
+---
+# Order matters: SSH hardening and the firewall come last, so a failure earlier
+# in the run can never leave a device half locked down.
+- name: Preflight checks
+  ansible.builtin.import_tasks: preflight.yml
+  tags: [always]
+
+- name: System packages, users and basics
+  ansible.builtin.import_tasks: system.yml
+  tags: [system]
+
+- name: Backend (release, config, service)
+  ansible.builtin.import_tasks: app.yml
+  when: slideshow_backend_mode == 'local'
+  tags: [app]
+
+- name: Display with Chromium
+  ansible.builtin.import_tasks: display_browser.yml
+  when: slideshow_display_mode == 'browser'
+  tags: [display]
+
+- name: Display with MPV
+  ansible.builtin.import_tasks: display_mpv.yml
+  when: slideshow_display_mode == 'mpv'
+  tags: [display]
+
+- name: Screen power by schedule
+  ansible.builtin.import_tasks: display_power.yml
+  when: slideshow_display_mode != 'none'
+  tags: [display]
+
+- name: Updates, reboots, watchdog and logs
+  ansible.builtin.import_tasks: maintenance.yml
+  tags: [maintenance]
+
+- name: Check that the device works before it is locked down
+  ansible.builtin.import_tasks: healthcheck.yml
+  tags: [health]
+
+- name: Read-only root filesystem (experimental)
+  ansible.builtin.import_tasks: readonly.yml
+  when: slideshow_readonly_root | bool
+  tags: [readonly]
+
+- name: SSH hardening and firewall
+  ansible.builtin.import_tasks: access.yml
+  tags: [access]

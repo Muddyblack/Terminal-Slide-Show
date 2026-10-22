@@ -1,0 +1,38 @@
+---
+- name: Install the screen power script
+  ansible.builtin.template:
+    src: slideshow-display-power.sh.j2
+    dest: /usr/local/bin/slideshow-display-power
+    owner: root
+    group: root
+    mode: "0755"
+  when: slideshow_display_power_method != 'none'
+
+- name: Install the screen power units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - slideshow-display-power.service
+    - slideshow-display-power.timer
+  when: slideshow_display_power_method != 'none'
+  notify: Reload systemd
+
+- name: Enable the screen power timer
+  ansible.builtin.systemd_service:
+    name: slideshow-display-power.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: slideshow_display_power_method != 'none'
+
+- name: Remove the screen power timer when it is not used
+  ansible.builtin.systemd_service:
+    name: slideshow-display-power.timer
+    enabled: false
+    state: stopped
+  failed_when: false
+  when: slideshow_display_power_method == 'none'
