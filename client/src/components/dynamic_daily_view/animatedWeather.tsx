@@ -10,6 +10,7 @@ import React, { CSSProperties } from 'react';
 
 import '@/styles/animatedWeather.css';
 import { AnimatedWeatherProps } from '@/components/dynamic_daily_view/types';
+import { t, weatherUnits } from '@/i18n';
 import { describeWeather, WeatherState } from '@/components/dynamic_daily_view/weatherModel';
 
 type Tone = 'light' | 'gray' | 'dark' | 'back' | 'backdark';
@@ -235,14 +236,15 @@ const AnimatedWeather: React.FC<AnimatedWeatherProps> = ({
   wind_gusts,
 }) => {
   const isNight = !is_day;
+  const units = weatherUnits();
   const state = describeWeather({ code: weatherCode, rain, showers, snowfall, windspeed: windSpeed, winddirection: windDirection, gusts: wind_gusts });
   const totalPrecipitation = rain + showers + snowfall;
 
   const precipIcon = snowfall > 0 ? <CloudSnow className="info-icon" /> : <CloudRain className="info-icon" />;
   const precipText = [
-    rain > 0 && `Regen ${rain} mm`,
-    showers > 0 && `Schauer ${showers} mm`,
-    snowfall > 0 && `Schnee ${snowfall} cm`,
+    rain > 0 && `${t('rain')} ${rain} ${units.rain}`,
+    showers > 0 && `${t('showers')} ${showers} ${units.rain}`,
+    snowfall > 0 && `${t('snow')} ${snowfall} ${units.snow}`,
   ].filter(Boolean).join(' · ');
 
   return (
@@ -253,14 +255,14 @@ const AnimatedWeather: React.FC<AnimatedWeatherProps> = ({
         </div>
 
         <div className="temperature-container">
-          <span className="temperature-text">{Math.round(temperature)}°C</span>
+          <span className="temperature-text">{Math.round(temperature)}{units.temperature}</span>
         </div>
         <span className="weather-label">{state.label}</span>
 
         <div className="weather-info-grid">
           <div className="weather-info-item">
             <Wind className="info-icon" />
-            <span className="info-value">{Math.round(windSpeed)} km/h</span>
+            <span className="info-value">{Math.round(windSpeed)} {units.wind}</span>
             <ArrowUp className="wind-direction-arrow w-3 h-3" style={{ transform: `rotate(${windDirection}deg)` }} />
           </div>
 

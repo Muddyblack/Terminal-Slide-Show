@@ -12,6 +12,7 @@ import WeatherScene from '@/components/dynamic_daily_view/weatherScene';
 import { DebugOptions, applyWeatherDebug } from '@/components/dynamic_daily_view/debugOptions';
 import { QuoteType, WeatherType, NasaImageType, GreetingsType, OccasionType, ContentType } from '@/components/dynamic_daily_view/types';
 import { useServerStatus } from '@/contexts/ServerStatusContext';
+import { dateLocale, t } from '@/i18n';
 
 
 /** How long each text stays on screen */
@@ -27,6 +28,7 @@ interface DynamicDailyViewProps {
 const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
   const [clock, setClock] = useState(new Date());
   const time = debug?.fakeNow ? new Date(debug.fakeNow) : clock;
+  const { dailyView, branding } = frontendConfig;
   const location = debug?.location || frontendConfig.info.location;
   const sourceParam = debug && debug.source !== 'auto' ? debug.source : '';
   const occasionDate = debug?.fakeNow ? debug.fakeNow.slice(0, 10) : '';
@@ -168,19 +170,19 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
         return Array.isArray(options) ? options[step % options.length] : options;
       }
     }
-    return 'Nachtschicht oder Feierabend? 🌙';
+    return '';
   };
 
   const safeDataFetch = async () => {
     console.debug('Current server connection status:', isServerConnected);
     try {
       await Promise.allSettled([
-        fetchQuotes(),
-        fetchWeather(),
-        fetchFacts(),
-        fetchContent(),
-        fetchNasaImage(),
-        fetchGreetings(),
+        dailyView.quote && fetchQuotes(),
+        dailyView.weather && fetchWeather(),
+        dailyView.fact && fetchFacts(),
+        dailyView.fact && fetchContent(),
+        dailyView.nasa && fetchNasaImage(),
+        dailyView.greeting && fetchGreetings(),
         fetchOccasion(),
         fetchSkin()
       ]);
@@ -217,7 +219,7 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
     const rotateTimer = setInterval(() => setStep((prev) => prev + 1), ROTATE_MS);
 
     const photoTimer = setInterval(() => {
-      if (isServerConnected) fetchNasaImage();
+      if (isServerConnected && dailyView.nasa) fetchNasaImage();
     }, 60000);
 
     // Cleanup
@@ -252,7 +254,7 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
   const item = content ? content.items[step % content.items.length] : null;
   const shownQuote = content?.quotes.length ? content.quotes[step % content.quotes.length] : quote;
 
-  const formattedDate = time.toLocaleDateString('de-DE', {
+  const formattedDate = time.toLocaleDateString(dateLocale(), {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -307,15 +309,15 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
             <span
               className="offline-dot"
               role="status"
-              title="Offline mode - using cached data"
-              aria-label="Offline mode - using cached data"
+              title={t('offline')}
+              aria-label={t('offline')}
             />
           )}
         </div>
 
         <main className="split">
           <section className="time-block">
-            {occasion ? <OccasionArt occasion={occasion} now={occasionNow} /> : (
+            {occasion ? <OccasionArt occasion={occasion} now={occasionNow} /> : dailyView.greeting && (
               <h1 className="greeting-text" key={`g${step}`}>{getGreetings(time.getHours())}</h1>
             )}
             <div className="clock" aria-label={`${hours}:${minutes}`}>
@@ -327,10 +329,10 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
           </section>
 
           <section className="reading-column">
-            <div className="quote-block" key={`q${step}`} onClick={() => setShowTranslation(!showTranslation)}>
+            {dailyView.quote && <div className="quote-block" key={`q${step}`} onClick={() => setShowTranslation(!showTranslation)}>
               <div className="gold-rule" />
               {isLoading ? (
-                <p className="quote-text">Lädt Zitat...</p>
+                <p className="quote-text">{t('loadingQuote')}</p>
               ) : error ? (
                 <p className="quote-text">{error}</p>
               ) : shownQuote ? (
@@ -342,18 +344,18 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
                   )}
                 </>
               ) : null}
-            </div>
+            </div>}
 
-            {(item || fact) && (
+            {dailyView.fact && (item || fact) && (
               <div className="fact-block" key={`f${step}`}>
-                <span className="fact-kicker">{item ? item.kind : 'Wusstest du?'}</span>
+                <span className="fact-kicker">{item ? item.kind : t('didYouKnow')}</span>
                 <p>{item ? item.text : fact}</p>
               </div>
             )}
           </section>
         </main>
 
-        {weather && (
+        {dailyView.weather && weather && (
           <AnimatedWeather
             weatherCode={weather.weathercode}
             temperature={weather.temperature}
@@ -368,7 +370,9 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
           />
         )}
 
-        <BrandLogo variant="side" className="brand-logo" />
+        {branding.logo
+          ? <img src={branding.logo} alt={branding.logoAlt} className="brand-logo" />
+          : <BrandLogo variant="side" className="brand-logo" />}
 
         {displayedImage && (
           <div className="photo-credit" onClick={() => setShowNasaInfo(!showNasaInfo)}>

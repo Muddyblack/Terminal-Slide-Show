@@ -17,8 +17,8 @@ export const frontendConfig = {
         greeting: true,
     },
     branding: {
-        logo: '/slideshow.png', // Image shown in the daily view
-        logoAlt: 'Logo',
+        logo: '', // Own image for the daily view, e.g. '/my-logo.png'; empty shows the built-in logo
+        logoAlt: 'Logo', // Alt text for an own image
     },
     slideshow: {
         watchInterval: 1000, // Interval for watching media files in downloadPath in milliseconds
