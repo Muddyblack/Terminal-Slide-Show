@@ -2,6 +2,7 @@ import { config } from '../config/config.js';
 
 
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import fs from 'fs/promises';
 import path from 'path';
 import fetch from 'node-fetch';
@@ -102,6 +103,13 @@ app.use((req, res, next) => {
 // Core API Routes
 /* ------------------------------------ */
 
+const limiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 300,
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
 app.use('/api', (req, res, next) => {
     if (!req.headers['x-client-id']) {
         // Generate a random client ID if not provided
@@ -118,13 +126,13 @@ app.use('/api', (req, res, next) => {
  * @route GET /api/all-media
  * @description Get all available media files
  */
-app.get('/api/all-media', (req, res) => {
+app.get('/api/all-media', limiter, (req, res) => {
     logger.debug('Getting all media files');
     const media = slideshowManager.getAllMedia();
     res.json(media || []);
 });
 
-app.get('/api/server-status', (req, res) => {
+app.get('/api/server-status', limiter, (req, res) => {
     logger.debug('Checking server status');
     try {
         const isGoogleDriveInitialized = googleDriveService.isInitialized();
@@ -148,7 +156,7 @@ app.get('/api/server-status', (req, res) => {
  * @route GET /api/quotes
  * @description Get random quote from local database
  */
-app.get('/api/quotes', async (req, res) => {
+app.get('/api/quotes', limiter, async (req, res) => {
     logger.debug('Fetching random quote');
     try {
         const quotesData = await fs.readFile(path.join(process.cwd(), 'data', 'quotes.json'), 'utf8');
@@ -165,7 +173,7 @@ app.get('/api/quotes', async (req, res) => {
  * @route GET /api/facts
  * @description Get random facts from local database
  */
-app.get('/api/facts', async (req, res) => {
+app.get('/api/facts', limiter, async (req, res) => {
     logger.debug('Fetching random fact');
     try {
         const factsData = await fs.readFile(path.join(process.cwd(), 'data', 'facts.json'), 'utf8');
@@ -182,7 +190,7 @@ app.get('/api/facts', async (req, res) => {
  * @route GET /api/greetings
  * @description Get random Greeting messages from local database
  */
-app.get('/api/greetings', async (req, res) => {
+app.get('/api/greetings', limiter, async (req, res) => {
     logger.debug('Fetching greetings');
     try {
         const greetingsData = await fs.readFile(path.join(process.cwd(), 'data', 'greetings.json'), 'utf8');
@@ -204,7 +212,7 @@ app.get('/api/greetings', async (req, res) => {
  * @description Fetch NASA Astronomy Picture of the Day
  * @throws {Error} If NASA API request fails
  */
-app.get('/api/nasa-apod', async (req, res) => {
+app.get('/api/nasa-apod', limiter, async (req, res) => {
     logger.debug('Fetching NASA APOD');
     if (!config.apiKeys.NASA_API_KEY) {
         return res.status(503).json({ error: 'NASA_API_KEY is not configured' });
@@ -233,7 +241,7 @@ app.get('/api/nasa-apod', async (req, res) => {
  * @description Fetch weather data for location
  * @param {string} req.query.location - Location to get weather for
  */
-app.get('/api/weather', async (req, res) => {
+app.get('/api/weather', limiter, async (req, res) => {
     const location = req.query.location || config.info.location;
     logger.debug(`Fetching weather for location: ${location}`);
 
@@ -304,7 +312,7 @@ async function fetchWeather(location) {
 }
 
 // Serve index.html for all other routes (SPA support)
-app.get('*', (req, res) => {
+app.get('*', limiter, (req, res) => {
     res.sendFile(path.join(process.cwd(), 'client', 'index.html'));
 });
 
