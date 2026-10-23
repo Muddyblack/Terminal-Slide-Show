@@ -1,14 +1,18 @@
-import { config } from '../config/config.js';
+import { config, publicConfig } from '../config/config.js';
 
 
 import express from 'express';
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import fetch from 'node-fetch';
 import { GoogleDriveService } from './services/googleDriveService.js';
 import { SlideshowManager } from './services/slideshowManager.js';
 import { Logger } from './utils/logger.js';
+import { readLocalizedData } from './utils/localizedData.js';
+import { isOperatingNow } from './utils/schedule.js';
 import { cached } from './utils/ttlCache.js';
+import { forecastUrl, hasCoordinates } from './utils/weather.js';
 import { createServer } from 'http';
 import { webSocketManager } from './services/webSocketManager.js';
 
@@ -59,6 +63,19 @@ async function initialize() {
     }
 }
 
+// Runtime frontend config
+/* ------------------------------------ */
+
+/**
+ * Per-device settings for the browser, loaded before the app starts.
+ * Never cached: a changed schedule must show up on the next page load.
+ */
+app.get('/config.js', (req, res) => {
+    res.type('application/javascript');
+    res.set('Cache-Control', 'no-cache');
+    res.send(`window.__SLIDESHOW_CONFIG__ = ${JSON.stringify(publicConfig)};`);
+});
+
 // Static File Serving
 /* ------------------------------------ */
 
@@ -75,11 +92,10 @@ const staticOptions = {
     etag: true
 };
 
-app.use(express.static(path.join(process.cwd(), 'client', 'public'), staticOptions));
-app.use(express.static(path.join(process.cwd(), 'dist'), staticOptions));
+app.use(express.static(config.paths.clientDist, staticOptions));
 // Media files can be replaced under the same name, so always revalidate.
 // express.static generates ETag/Last-Modified, which makes revalidation cheap (304).
-app.use('/media', express.static(path.join(process.cwd(), config.paths.downloadPath), {
+app.use('/media', express.static(path.resolve(process.cwd(), config.paths.downloadPath), {
     etag: true,
     lastModified: true,
     maxAge: 0,
@@ -141,8 +157,25 @@ app.get('/api/server-status', (req, res) => {
     }
 });
 
+/**
+ * @route GET /api/display-state
+ * @description Whether the display should be on right now according to the schedule.
+ * Polled by the device's power timer and by the MPV player.
+ */
+app.get('/api/display-state', (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json({ active: isOperatingNow(config.schedule) });
+});
+
 // Local Data API Routes
 /* ------------------------------------ */
+
+const bundledDataPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data');
+const readContent = (name) => readLocalizedData(name, {
+    dataPath: config.paths.dataPath,
+    language: config.locale.language,
+    bundledPath: bundledDataPath,
+});
 
 /**
  * @route GET /api/quotes
@@ -151,8 +184,8 @@ app.get('/api/server-status', (req, res) => {
 app.get('/api/quotes', async (req, res) => {
     logger.debug('Fetching random quote');
     try {
-        const quotesData = await fs.readFile(path.join(process.cwd(), 'data', 'quotes.json'), 'utf8');
-        const quotes = JSON.parse(quotesData).quotes;
+        const quotesData = await readContent('quotes.json');
+        const quotes = quotesData.quotes;
         const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
         res.json(randomQuote);
     } catch (error) {
@@ -168,8 +201,8 @@ app.get('/api/quotes', async (req, res) => {
 app.get('/api/facts', async (req, res) => {
     logger.debug('Fetching random fact');
     try {
-        const factsData = await fs.readFile(path.join(process.cwd(), 'data', 'facts.json'), 'utf8');
-        const facts = JSON.parse(factsData);
+        const factsData = await readContent('facts.json');
+        const facts = factsData;
         const randomFact = facts[Math.floor(Math.random() * facts.length)];
         res.json(randomFact);
     } catch (error) {
@@ -185,8 +218,8 @@ app.get('/api/facts', async (req, res) => {
 app.get('/api/greetings', async (req, res) => {
     logger.debug('Fetching greetings');
     try {
-        const greetingsData = await fs.readFile(path.join(process.cwd(), 'data', 'greetings.json'), 'utf8');
-        const greetings = JSON.parse(greetingsData);
+        const greetingsData = await readContent('greetings.json');
+        const greetings = greetingsData;
         res.json(greetings);
     } catch (error) {
         logger.error('Failed to fetch greetings:', error);
@@ -230,19 +263,20 @@ app.get('/api/nasa-apod', async (req, res) => {
 
 /**
  * @route GET /api/weather
- * @description Fetch weather data for location
- * @param {string} req.query.location - Location to get weather for
+ * @description Current weather for the configured position (info.latitude/longitude,
+ * or looked up from info.location), in the configured units
  */
 app.get('/api/weather', async (req, res) => {
-    const location = req.query.location || config.info.location;
-    logger.debug(`Fetching weather for location: ${location}`);
+    const { info, locale } = config;
+    logger.debug(`Fetching weather for ${info.location}`);
 
     try {
-        const enrichedResponse = await cached(`weather:${location}`, 10 * 60 * 1000, () => fetchWeather(location));
-        if (!enrichedResponse) {
+        const key = `weather:${info.location}:${info.latitude}:${info.longitude}:${info.elevation}:${locale.units}`;
+        const weather = await cached(key, 10 * 60 * 1000, () => fetchWeather(info, locale.units));
+        if (!weather) {
             return res.status(404).json({ error: 'Location not found' });
         }
-        res.json(enrichedResponse);
+        res.json(weather);
     } catch (error) {
         logger.error('Failed to fetch weather:', error);
         res.status(500).json({ error: 'Failed to fetch weather data' });
@@ -250,62 +284,57 @@ app.get('/api/weather', async (req, res) => {
 });
 
 /**
- * Looks up a location and its current weather
- * @param {string} location
+ * Fetches the current weather for a configured position
+ * @param {Object} info - config.info
+ * @param {'metric'|'imperial'} units
  * @returns {Promise<Object|null>} Weather data, or null when the location is unknown
  */
-async function fetchWeather(location) {
-    const geoResponse = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1`
-    );
-    const geoData = await geoResponse.json();
+async function fetchWeather(info, units) {
+    let { latitude, longitude, elevation } = info;
+    let place = { name: info.location };
 
-    if (!geoData.results?.[0]) {
-        return null;
+    if (!hasCoordinates(info)) {
+        const geoResponse = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(info.location)}&count=1`
+        );
+        const geoData = await geoResponse.json();
+        const result = geoData.results?.[0];
+        if (!result) return null;
+
+        ({ latitude, longitude } = result);
+        place = { name: result.name, country: result.country };
     }
 
-    const { latitude, longitude, timezone } = geoData.results[0];
-
-    const weatherResponse = await fetch(
-        `https://api.open-meteo.com/v1/forecast?` +
-        `latitude=${latitude}&longitude=${longitude}&` +
-        `current=temperature_2m,is_day,rain,showers,snowfall,` +
-        `weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,` +
-        `wind_gusts_10m&timezone=${encodeURIComponent(timezone)}&forecast_days=1`
-    );
-
+    const weatherResponse = await fetch(forecastUrl({ latitude, longitude, elevation, units }));
+    if (!weatherResponse.ok) throw new Error(`Open-Meteo responded with ${weatherResponse.status}`);
     const weatherData = await weatherResponse.json();
+    const { current } = weatherData;
 
-    const enrichedResponse = {
+    return {
         ...weatherData,
-        location: {
-            name: geoData.results[0].name,
-            timezone: timezone,
-            country: geoData.results[0].country,
-            latitude,
-            longitude
-        },
+        location: { ...place, timezone: weatherData.timezone, latitude, longitude },
+        units,
         current_weather: {
-            temperature: weatherData.current.temperature_2m,
-            weathercode: weatherData.current.weather_code,
-            is_day: weatherData.current.is_day,
-            time: weatherData.current.time,
-            windspeed: weatherData.current.wind_speed_10m,
-            winddirection: weatherData.current.wind_direction_10m,
-            wind_gusts: weatherData.current.wind_gusts_10m,
-            cloud_cover: weatherData.current.cloud_cover,
-            rain: weatherData.current.rain,
-            showers: weatherData.current.showers,
-            snowfall: weatherData.current.snowfall
+            temperature: current.temperature_2m,
+            weathercode: current.weather_code,
+            is_day: current.is_day,
+            time: current.time,
+            windspeed: current.wind_speed_10m,
+            winddirection: current.wind_direction_10m,
+            wind_gusts: current.wind_gusts_10m,
+            cloud_cover: current.cloud_cover,
+            rain: current.rain,
+            showers: current.showers,
+            snowfall: current.snowfall
         }
     };
-
-    return enrichedResponse;
 }
 
 // Serve index.html for all other routes (SPA support)
 app.get('*', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'client', 'index.html'));
+    res.sendFile(path.join(config.paths.clientDist, 'index.html'), (err) => {
+        if (err) res.sendStatus(404); // Frontend is served elsewhere (e.g. nginx)
+    });
 });
 
 // Server Lifecycle
@@ -315,7 +344,7 @@ app.get('*', (req, res) => {
  * Start server and initialize services
  */
 initialize().then(() => {
-    server.listen(port, () => {
+    server.listen(port, host, () => {
         logger.info(`Backend running at http://${host}:${port}/`);
     });
 }).catch(error => {

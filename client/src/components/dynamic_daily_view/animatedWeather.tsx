@@ -8,6 +8,7 @@ import React, { JSX }  from 'react';
 
 import '@/styles/animatedWeather.css';
 import { AnimatedWeatherProps } from '@/components/dynamic_daily_view/types';
+import { t, weatherUnits } from '@/i18n';
 
 /**
  * Determines which weather animation to display based on weather code and time of day
@@ -618,6 +619,7 @@ const AnimatedWeather: React.FC<AnimatedWeatherProps> = ({
   is_day
 }) => {
   const isNight = !is_day;
+  const units = weatherUnits();
   const totalPrecipitation = rain + showers + snowfall;
 
   const getWeatherIcon = () => {
@@ -635,7 +637,7 @@ const AnimatedWeather: React.FC<AnimatedWeatherProps> = ({
         
         <div className="temperature-container">
           <span className="temperature-text">
-            {Math.round(temperature)}°C
+            {Math.round(temperature)}{units.temperature}
           </span>
         </div>
 
@@ -644,7 +646,7 @@ const AnimatedWeather: React.FC<AnimatedWeatherProps> = ({
           <div className="weather-info-item">
             <Wind className="info-icon" />
             <span className="info-value">
-              {windSpeed} km/h
+              {windSpeed} {units.wind}
             </span>
             <ArrowUp
               className="wind-direction-arrow w-3 h-3"
@@ -665,9 +667,9 @@ const AnimatedWeather: React.FC<AnimatedWeatherProps> = ({
             <div className="weather-info-item col-span-2">
               {getWeatherIcon()}
               <span className="info-value">
-                {rain > 0 && `Rain ${rain}mm`}
-                {showers > 0 && `Showers ${showers}mm`}
-                {snowfall > 0 && `Snow ${snowfall}cm`}
+                {rain > 0 && `${t('rain')} ${rain}${units.rain}`}
+                {showers > 0 && `${t('showers')} ${showers}${units.rain}`}
+                {snowfall > 0 && `${t('snow')} ${snowfall}${units.snow}`}
               </span>
             </div>
           )}

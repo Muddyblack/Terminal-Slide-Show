@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 import MediaCanvas from '@/components/slideshow/mediaCanvas';
 import { NavigationDirection, LocalMediaManagerReturn } from '@/components/slideshow/types';
-import { frontendConfig } from '@config/frontend.config';
+import { frontendConfig } from '@/config';
 
 import ConnectionToast from '@/components/connectionToast';
 import DynamicDailyView from '@/components/dynamic_daily_view/dynamicDailyView';

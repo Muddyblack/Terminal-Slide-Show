@@ -21,6 +21,21 @@ jobs:
       - run: npm ci
       - run: npm test
 
+  tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest tools/test_sdcard.py tools/test_setup.py
+      - run: shellcheck tools/sdcard/firstboot.sh
+
+  ansible:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ansible/ansible-lint@v25
+        with:
+          working_directory: ansible
+
   client:
     runs-on: ubuntu-latest
     defaults:

@@ -1,0 +1,9 @@
+---
+# A Pi 4 or 5 with a screen that shows the full daily view
+slideshow_display_mode: browser
+
+# Only used by tools/slideshow-sdcard when it prepares this device's card
+slideshow_wifi:
+  ssid: "Office WLAN"
+  password: "{{ vault_wifi_password }}"
+  country: DE

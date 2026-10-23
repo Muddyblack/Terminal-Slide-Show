@@ -1,0 +1,9 @@
+---
+# Everything at this site: its own Drive folder and location
+slideshow_location: Friedrichshafen
+slideshow_google_folder_id: "{{ vault_campus_north_folder_id }}"
+slideshow_settings_override:
+  info:
+    latitude: 47.65
+    longitude: 9.48
+    elevation: 395

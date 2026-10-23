@@ -1,0 +1,432 @@
+#!/usr/bin/env python3
+"""Prepare a Raspberry Pi SD card for one Terminal Slide Show device.
+
+One command writes Raspberry Pi OS Lite to the card and adds everything the Pi
+needs to set itself up on its first boot: the admin user and SSH key, Wi-Fi, the
+device's settings and secrets from your fleet repository, and a first-boot
+installer that runs the Ansible role. Put the card in a Pi, power it on, and a few
+minutes later it is a working, hardened display.
+
+    tools/slideshow-sdcard --fleet ~/my-fleet --host lobby-pi            # pick the card from a list
+    tools/slideshow-sdcard --fleet ~/my-fleet --host lobby-pi --device /dev/sdb
+    tools/slideshow-sdcard --fleet ~/my-fleet --host lobby-pi --output lobby-pi.img   # file instead of a card
+
+Linux only for now. Needs: python3, ansible, mtools (mcopy), sudo for writing the card.
+The Pi needs internet on its first boot (it installs packages from apt).
+"""
+
+import argparse
+import hashlib
+import json
+import lzma
+import os
+import shutil
+import struct
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.request
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+ASSETS = Path(__file__).resolve().parent / "sdcard"
+IMAGE_URL = "https://downloads.raspberrypi.com/raspios_lite_arm64_latest"
+CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "slideshow-sdcard"
+CHUNK = 4 * 1024 * 1024
+
+# Mount points that mean "this disk is part of the running system"
+SYSTEM_MOUNTS = ("/", "/boot", "/home", "/nix", "/usr", "/var", "/opt", "/etc", "[SWAP]")
+
+
+class Fail(Exception):
+    """A problem the user can fix; shown without a traceback."""
+
+
+def say(message):
+    print(message, flush=True)
+
+
+def run(command, **kwargs):
+    kwargs.setdefault("check", True)
+    try:
+        return subprocess.run(command, **kwargs)
+    except FileNotFoundError:
+        raise Fail(f"{command[0]} is not installed")
+    except subprocess.CalledProcessError as error:
+        raise Fail(f"{' '.join(map(str, command[:3]))} ... failed (exit {error.returncode})")
+
+
+# ---------------------------------------------------------------------------
+# Device selection (the dangerous part: only ever offer removable disks)
+# ---------------------------------------------------------------------------
+
+def mountpoints(node):
+    """All mount points of a lsblk node and its children."""
+    found = [m for m in (node.get("mountpoints") or []) if m]
+    for child in node.get("children") or []:
+        found += mountpoints(child)
+    return found
+
+
+def candidate_disks(lsblk):
+    """Disks that look like an SD card or USB stick and are not part of the running system."""
+    result = []
+    for disk in lsblk["blockdevices"]:
+        if disk.get("type") != "disk":
+            continue
+        mounts = mountpoints(disk)
+        if any(m == s or m.startswith(s + "/") and s != "/" for m in mounts for s in SYSTEM_MOUNTS):
+            continue  # holds the running system
+        removable = bool(disk.get("rm")) or bool(disk.get("hotplug")) \
+            or disk.get("tran") == "usb" or disk["name"].startswith("mmcblk")
+        if not removable or not disk.get("size") or disk["size"] > 1024 ** 4:
+            continue
+        result.append(disk)
+    return result
+
+
+def list_disks():
+    out = run(["lsblk", "--json", "--bytes", "--output",
+               "NAME,PATH,SIZE,TYPE,RM,HOTPLUG,TRAN,MODEL,MOUNTPOINTS"],
+              capture_output=True, text=True).stdout
+    return candidate_disks(json.loads(out))
+
+
+def human(size):
+    for unit in ("B", "KB", "MB", "GB", "TB"):
+        if size < 1000 or unit == "TB":
+            return f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
+        size /= 1000
+
+
+def choose_device(requested):
+    disks = list_disks()
+    by_path = {d["path"]: d for d in disks}
+
+    if requested:
+        if requested not in by_path:
+            raise Fail(f"{requested} is not an SD card or USB disk I am willing to erase "
+                       f"(it may hold your running system, or not be removable). Candidates: "
+                       f"{', '.join(by_path) or 'none'}")
+        return by_path[requested]
+
+    if not disks:
+        raise Fail("No SD card found. Insert one and try again, or use --output to write an image file.")
+
+    say("Removable disks:")
+    for number, disk in enumerate(disks, 1):
+        say(f"  {number}) {disk['path']}  {human(disk['size'])}  {(disk.get('model') or '').strip()}")
+    answer = input("Which one is the SD card? (number) ").strip()
+    if not answer.isdigit() or not 1 <= int(answer) <= len(disks):
+        raise Fail("Cancelled.")
+    return disks[int(answer) - 1]
+
+
+def confirm_erase(disk, assume_yes):
+    say(f"\nEVERYTHING on {disk['path']} ({human(disk['size'])}, {(disk.get('model') or '').strip()}) will be erased.")
+    if assume_yes:
+        return
+    if input(f"Type {disk['path']} to continue: ").strip() != disk["path"]:
+        raise Fail("Cancelled, nothing was written.")
+
+
+# ---------------------------------------------------------------------------
+# The device bundle
+# ---------------------------------------------------------------------------
+
+def export_vars(fleet, host, workdir):
+    """Asks Ansible for the device's slideshow_* variables, with secrets decrypted."""
+    export_dir = workdir / "export"
+    export_dir.mkdir(mode=0o700)
+    env = dict(os.environ, ANSIBLE_COLLECTIONS_PATH=os.pathsep.join(
+        [str(workdir / "collections-src")] + [p for p in [os.environ.get("ANSIBLE_COLLECTIONS_PATH")] if p]))
+    run(["ansible-playbook", "muddyblack.terminal_slideshow.export_device",
+         "--limit", host, "-e", f"export_dir={export_dir}"], cwd=fleet, env=env)
+    return json.loads((export_dir / "vars.json").read_text())
+
+
+def build_collections(workdir):
+    """The role as a tarball, plus its dependency, so the Pi installs them without Galaxy."""
+    out = workdir / "bundle" / "collections"
+    out.mkdir(parents=True)
+    run(["ansible-galaxy", "collection", "build", str(REPO / "ansible"), "--output-path", str(out), "--force"],
+        stdout=subprocess.DEVNULL)
+    run(["ansible-galaxy", "collection", "download", "ansible.posix", "-p", str(out)],
+        stdout=subprocess.DEVNULL)
+    for stray in out.glob("requirements.yml"):
+        stray.unlink()
+    return out
+
+
+def user_data(host, settings, wifi):
+    """cloud-init user-data (JSON is valid YAML, so no YAML library is needed)."""
+    admin = settings.get("slideshow_admin_user")
+    keys = settings.get("slideshow_admin_ssh_keys") or []
+    if not admin or not keys:
+        raise Fail(f"{host}: set slideshow_admin_user and slideshow_admin_ssh_keys, "
+                   "otherwise nobody could log in to the device.")
+
+    config = {
+        "hostname": host,
+        "manage_etc_hosts": True,
+        "users": [{
+            "name": admin,
+            "groups": "users,adm,sudo,video,render,input",
+            "shell": "/bin/bash",
+            "lock_passwd": True,
+            "ssh_authorized_keys": keys,
+            "sudo": "ALL=(ALL) NOPASSWD:ALL",
+        }],
+        "enable_ssh": True,
+        "ssh_pwauth": False,
+        "write_files": [
+            {"path": "/etc/systemd/system/slideshow-firstboot.service", "permissions": "0644",
+             "content": (ASSETS / "slideshow-firstboot.service").read_text()},
+            {"path": "/usr/local/sbin/slideshow-firstboot", "permissions": "0755",
+             "content": (ASSETS / "firstboot.sh").read_text()},
+        ],
+        "runcmd": [
+            ["systemctl", "daemon-reload"],
+            ["systemctl", "enable", "--now", "--no-block", "slideshow-firstboot.service"],
+        ],
+    }
+    if settings.get("slideshow_timezone"):
+        config["timezone"] = settings["slideshow_timezone"]
+    return "#cloud-config\n" + json.dumps(config, indent=2) + "\n"
+
+
+def network_config(wifi):
+    """Netplan network-config for Wi-Fi, or None to keep the image's default (DHCP on Ethernet)."""
+    if not wifi or not wifi.get("ssid"):
+        return None
+    if not wifi.get("country"):
+        raise Fail("slideshow_wifi needs a country (two letters, e.g. DE): Wi-Fi will not work without it.")
+    config = {"network": {
+        "version": 2,
+        "wifis": {
+            "renderer": "NetworkManager",
+            "wlan0": {
+                "dhcp4": True,
+                "regulatory-domain": wifi["country"],
+                "access-points": {wifi["ssid"]: {"password": wifi.get("password", "")}},
+                "optional": True,
+            },
+        },
+    }}
+    return json.dumps(config, indent=2) + "\n"
+
+
+def build_bundle(fleet, host, workdir):
+    """Everything that goes on the boot partition. Returns (bundle dir, user-data, network-config)."""
+    bundle = workdir / "bundle"
+    collections = build_collections(workdir)
+
+    # Use exactly the collection that is shipped to the device, not whatever the fleet has installed
+    source = workdir / "collections-src"
+    source.mkdir()
+    # --force: otherwise Galaxy skips the install when the same version exists in another collections path
+    run(["ansible-galaxy", "collection", "install", "--force", "--no-deps", "-p", str(source),
+         *map(str, collections.glob("muddyblack-*.tar.gz"))], stdout=subprocess.DEVNULL)
+
+    settings = export_vars(fleet, host, workdir)
+    wifi = settings.pop("slideshow_wifi", None)  # only the SD card needs it
+
+    (bundle / "vars.json").write_text(json.dumps(settings, indent=2))
+    (bundle / "vars.json").chmod(0o600)
+    shutil.copy(ASSETS / "provision.yml", bundle / "provision.yml")
+
+    return bundle, user_data(host, settings, wifi), network_config(wifi)
+
+
+# ---------------------------------------------------------------------------
+# Image
+# ---------------------------------------------------------------------------
+
+def fetch_image(source):
+    """Returns a local path to a .img or .img.xz, downloading (and verifying) the official one if needed."""
+    if source and Path(source).exists():
+        return Path(source)
+
+    url = source or IMAGE_URL
+    CACHE.mkdir(parents=True, exist_ok=True)
+    say(f"Looking up {url}")
+    with urllib.request.urlopen(url, timeout=30) as response:
+        final_url = response.geturl()
+        target = CACHE / final_url.rsplit("/", 1)[-1]
+        if target.exists():
+            say(f"Using cached {target.name}")
+        else:
+            say(f"Downloading {target.name}")
+            partial = target.with_suffix(target.suffix + ".part")
+            digest = hashlib.sha256()
+            with partial.open("wb") as handle:
+                while chunk := response.read(CHUNK):
+                    handle.write(chunk)
+                    digest.update(chunk)
+            expected = fetch_checksum(final_url)
+            if expected and digest.hexdigest() != expected:
+                partial.unlink()
+                raise Fail("The downloaded image does not match its published SHA-256, try again.")
+            if not expected:
+                say("Warning: no published SHA-256 found, the download was not verified.")
+            partial.rename(target)
+    return target
+
+
+def fetch_checksum(image_url):
+    try:
+        with urllib.request.urlopen(image_url + ".sha256", timeout=30) as response:
+            return response.read().decode().split()[0].lower()
+    except OSError:
+        return None
+
+
+def image_chunks(path):
+    """Decompressed image data in chunks."""
+    opener = lzma.open if path.suffix == ".xz" else open
+    with opener(path, "rb") as handle:
+        while chunk := handle.read(CHUNK):
+            yield chunk
+
+
+def first_partition_offset(image_path):
+    """Byte offset of the first partition of an image (Raspberry Pi OS uses an MBR)."""
+    with open(image_path, "rb") as handle:
+        sector0 = handle.read(512)
+    if sector0[510:512] != b"\x55\xaa":
+        raise Fail("The image has no MBR partition table.")
+    start_sector = struct.unpack("<I", sector0[446 + 8:446 + 12])[0]
+    if not start_sector:
+        raise Fail("The image has no first partition.")
+    return start_sector * 512
+
+
+# ---------------------------------------------------------------------------
+# Writing
+# ---------------------------------------------------------------------------
+
+def sudo_if_needed(path):
+    return [] if os.access(path, os.W_OK) else ["sudo"]
+
+
+def write_to_device(disk, image):
+    device = disk["path"]
+    if sudo_if_needed(device):
+        say("Asking for sudo to write to the card ...")
+        run(["sudo", "-v"])  # authenticate now, so the password prompt does not collide with the progress output
+    for mount in mountpoints(disk):
+        run(["sudo", "umount", mount])
+    say(f"Writing {image.name} to {device} ...")
+    writer = subprocess.Popen([*sudo_if_needed(device), "dd", f"of={device}", "bs=4M", "iflag=fullblock",
+                               "conv=fsync", "status=none"], stdin=subprocess.PIPE)
+    written = 0
+    try:
+        for chunk in image_chunks(image):
+            writer.stdin.write(chunk)
+            written += len(chunk)
+            print(f"\r  {written / 1e6:,.0f} MB written", end="", flush=True)
+        writer.stdin.close()
+    except BrokenPipeError:
+        pass
+    if writer.wait() != 0:
+        raise Fail("Writing to the card failed.")
+    print()
+    run(["sync"])
+    run([*sudo_if_needed(device), "blockdev", "--rereadpt", device], check=False)
+
+    partition = wait_for_partition(device)
+    for mount in subprocess.run(["lsblk", "--noheadings", "--output", "MOUNTPOINT", partition],
+                                capture_output=True, text=True).stdout.split():
+        run(["sudo", "umount", mount], check=False)  # a desktop may have auto-mounted it
+    return partition
+
+
+def wait_for_partition(device):
+    candidates = [Path(device + "1"), Path(device + "p1")]
+    for _ in range(100):
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+        time.sleep(0.2)
+    raise Fail(f"The first partition of {device} did not appear.")
+
+
+def copy_to_boot(spec, bundle, user_data_text, network_text, privileged, workdir):
+    """Copies the files to the FAT boot partition with mtools (no mounting needed)."""
+    staging = workdir / "boot-files"
+    staging.mkdir()
+    (staging / "user-data").write_text(user_data_text)
+    if network_text:
+        (staging / "network-config").write_text(network_text)
+
+    base = ["sudo"] if privileged else []
+    for name in ("user-data", "network-config"):
+        if (staging / name).exists():
+            run([*base, "mcopy", "-i", spec, "-o", str(staging / name), f"::{name}"])
+
+    run([*base, "mmd", "-i", spec, "::slideshow"], check=False)  # ok if it already exists
+    run([*base, "mcopy", "-i", spec, "-s", "-o", *map(str, sorted(bundle.iterdir())), "::slideshow/"])
+
+
+# ---------------------------------------------------------------------------
+
+def main():
+    parser = argparse.ArgumentParser(description="Prepare a Raspberry Pi SD card for one Terminal Slide Show device.")
+    parser.add_argument("--fleet", required=True, type=Path, help="your fleet repository (with inventory.yml)")
+    parser.add_argument("--host", required=True, help="device name from the inventory")
+    target = parser.add_mutually_exclusive_group()
+    target.add_argument("--device", help="SD card device, e.g. /dev/sdb (default: choose from a list)")
+    target.add_argument("--output", type=Path, help="write an image file instead of a card")
+    parser.add_argument("--image", help="Raspberry Pi OS image (.img or .img.xz, or a URL); default: the latest official Lite 64-bit")
+    parser.add_argument("--yes", action="store_true", help="skip the erase confirmation (needs --device)")
+    args = parser.parse_args()
+
+    if args.yes and not args.device:
+        raise Fail("--yes needs --device, so it can never pick a disk for you.")
+    if not (args.fleet / "inventory.yml").exists():
+        raise Fail(f"{args.fleet}/inventory.yml not found")
+    if not args.output and sys.platform != "linux":
+        raise Fail("Writing straight to a card only works on Linux. On Windows (WSL2) or macOS use "
+                   "--output NAME.img and flash that file with Raspberry Pi Imager (see docs/SETUP.md).")
+    for tool in ("ansible-playbook", "ansible-galaxy", "mcopy"):
+        if not shutil.which(tool):
+            raise Fail(f"{tool} is required" + (" (package: mtools)" if tool == "mcopy" else ""))
+
+    disk = None
+    if not args.output:
+        disk = choose_device(args.device)
+
+    with tempfile.TemporaryDirectory(prefix="slideshow-sdcard-") as tmp:
+        workdir = Path(tmp)
+        workdir.chmod(0o700)
+        say(f"Preparing {args.host} ...")
+        bundle, user_data_text, network_text = build_bundle(args.fleet, args.host, workdir)
+        image = fetch_image(args.image)
+
+        if disk:
+            confirm_erase(disk, args.yes)
+            partition = write_to_device(disk, image)
+            copy_to_boot(partition, bundle, user_data_text, network_text,
+                         privileged=bool(sudo_if_needed(partition)), workdir=workdir)
+            run(["sync"])
+            say(f"\nDone. Put the card in the Pi and power it on. Setup takes a few minutes "
+                f"(it needs internet), then {args.host} reboots into the slideshow.")
+        else:
+            say(f"Writing {args.output} ...")
+            with args.output.open("wb") as handle:
+                for chunk in image_chunks(image):
+                    handle.write(chunk)
+            spec = f"{args.output}@@{first_partition_offset(args.output)}"
+            copy_to_boot(spec, bundle, user_data_text, network_text, privileged=False, workdir=workdir)
+            say(f"\nDone: {args.output}. Write it to a card (for example with Raspberry Pi Imager's "
+                "'Use custom' option, without applying any customisation).")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Fail as error:
+        sys.exit(f"Error: {error}")
+    except KeyboardInterrupt:
+        sys.exit("\nCancelled.")

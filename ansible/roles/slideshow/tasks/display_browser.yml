@@ -1,0 +1,45 @@
+---
+- name: Create the Chromium policy directory
+  ansible.builtin.file:
+    path: /etc/chromium/policies/managed
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Lock Chromium down to the slideshow
+  ansible.builtin.template:
+    src: chromium-policy.json.j2
+    dest: /etc/chromium/policies/managed/slideshow.json
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart the display
+
+- name: Install the browser launcher
+  ansible.builtin.template:
+    src: slideshow-browser.sh.j2
+    dest: /usr/local/bin/slideshow-browser
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Restart the display
+
+- name: Install the display service
+  ansible.builtin.template:
+    src: slideshow-display.service.j2
+    dest: /etc/systemd/system/slideshow-display.service
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    slideshow_display_command: /usr/local/bin/slideshow-browser
+  notify:
+    - Reload systemd
+    - Restart the display
+
+- name: Enable the display
+  ansible.builtin.systemd_service:
+    name: slideshow-display
+    enabled: true
+    daemon_reload: true

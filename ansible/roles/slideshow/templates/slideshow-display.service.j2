@@ -1,0 +1,45 @@
+# Managed by Ansible
+[Unit]
+Description=Terminal Slide Show display ({{ slideshow_display_mode }})
+After=systemd-user-sessions.service systemd-logind.service getty@tty1.service
+Wants=systemd-logind.service
+Conflicts=getty@tty1.service
+{% if slideshow_backend_mode == 'local' %}
+After=slideshow-backend.service
+Wants=slideshow-backend.service
+{% else %}
+After=network-online.target
+Wants=network-online.target
+{% endif %}
+
+[Service]
+Type=simple
+User={{ slideshow_kiosk_user }}
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty-fail
+StandardOutput=journal
+StandardError=journal
+UtmpIdentifier=tty1
+UtmpMode=user
+Environment=SLIDESHOW_URL={{ slideshow_base_url }}
+{% if slideshow_display_mode == 'mpv' %}
+Environment="SLIDESHOW_MPV_ARGS={{ slideshow_mpv_args }}"
+Environment=SLIDESHOW_DEFAULT_DURATION={{ ((slideshow_effective_settings.slideshow | default({})).defaultSlideDuration | default(10000) | int / 1000) | round(1) }}
+{% endif %}
+ExecStart={{ slideshow_display_command }}
+Restart=always
+RestartSec=3
+
+NoNewPrivileges=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+
+[Install]
+WantedBy=multi-user.target

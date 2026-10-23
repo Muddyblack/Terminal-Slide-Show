@@ -1,4 +1,4 @@
-import { frontendConfig } from '@config/frontend.config';
+import { frontendConfig } from '@/config';
 import { useState, useEffect } from 'react';
 
 /**
@@ -28,7 +28,8 @@ export const useSchedule = () => {
         const [endDay, endMonth, endYear] = period.end.split('.').map(Number);
 
         const startDate = new Date(startYear, startMonth - 1, startDay);
-        const endDate = new Date(endYear, endMonth - 1, endDay);
+        // The last day of a vacation period counts as a whole day
+        const endDate = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999);
 
         return date >= startDate && date <= endDate;
       });

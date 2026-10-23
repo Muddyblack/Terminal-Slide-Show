@@ -1,0 +1,55 @@
+# Managed by Ansible
+[Unit]
+Description=Terminal Slide Show backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ slideshow_backend_user }}
+Group={{ slideshow_backend_user }}
+WorkingDirectory={{ slideshow_install_dir }}/current/server
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=5
+
+Environment=NODE_ENV=production
+Environment=BACKEND_HOST={{ slideshow_backend_host }}
+Environment=BACKEND_PORT={{ slideshow_backend_port }}
+Environment=SLIDESHOW_CONFIG={{ slideshow_config_dir }}/config.json
+Environment=DOWNLOAD_PATH={{ slideshow_state_dir }}/media
+Environment=CLIENT_DIST={{ slideshow_install_dir }}/current/client/dist
+{% if slideshow_content_dir | length > 0 %}
+Environment=DATA_PATH={{ slideshow_state_dir }}/content
+{% endif %}
+{% if slideshow_google_service_account | length > 0 %}
+Environment=GOOGLE_SERVICE_ACCOUNT=%d/google-service-account.json
+LoadCredential=google-service-account.json:{{ slideshow_config_dir }}/google-service-account.json
+{% endif %}
+EnvironmentFile={{ slideshow_config_dir }}/backend.env
+
+# Sandbox: the backend only needs the network and its own state directory
+StateDirectory=slideshow
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged
+
+[Install]
+WantedBy=multi-user.target

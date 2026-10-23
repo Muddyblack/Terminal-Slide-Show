@@ -1,0 +1,3 @@
+---
+slideshow_location: Ravensburg
+slideshow_google_folder_id: "{{ vault_campus_south_folder_id }}"

@@ -26,7 +26,7 @@ Drop images and videos into a Google Drive folder, and your displays pick them u
 
 ## Quick start
 
-**Requirements:** Node.js 24+, a Google Cloud project with the Drive API enabled. Kiosk mode needs a Debian-based system such as Raspberry Pi OS.
+**Requirements:** Node.js 24 (20 or newer on a Pi), a Google Cloud project with the Drive API enabled.
 
 ```bash
 git clone https://github.com/Muddyblack/Terminal-Slide-Show.git
@@ -38,6 +38,12 @@ npm run dev
 ```
 
 The client runs on <http://localhost:5173>, the API on port 3000.
+
+### Raspberry Pi fleet
+
+**New here?** Follow the step-by-step guide: [Deutsch](docs/ANLEITUNG.md) or [English](docs/SETUP.md). A wizard (`tools/slideshow-setup`) asks the questions and sets everything up, on Windows (WSL2), macOS and Linux.
+
+For real displays, use the Ansible collection in [`ansible/`](ansible/README.md). It sets up and maintains Raspberry Pi 3, 4 and 5 (Raspberry Pi OS Lite) from an inventory in your own repository: per-site and per-device settings, a hardened and firewalled system, checksum-verified releases, rolling updates with health checks, automatic security updates and an optional daily reboot. Each Pi shows the full daily view in Chromium or plays just the media with MPV, and either can use a central server instead of running its own backend. `tools/slideshow-sdcard` prepares a ready-to-boot SD card in one command: put it in a blank Pi and it sets itself up.
 
 ### Docker
 
@@ -59,13 +65,15 @@ Secrets and per-machine values live in `server/config/.env`:
 | `GOOGLE_SERVICE_ACCOUNT` | Path to the service account JSON key |
 | `GOOGLE_API_KEY` | Alternative to the service account (public folders only) |
 | `NASA_API_KEY` | Optional, enables the picture of the day |
-| `LOCATION` | Used for weather |
-| `KIOSK_URL`, `KIOSK_USER`, `KIOSK_PASSWORD` | Kiosk mode |
+| `LOCATION` | Name shown on screen and used for the weather |
+| `SLIDESHOW_CONFIG` | JSON file with per-device settings, merged over `frontend.config.js` (this is how the Ansible role configures each Pi) |
+| `DOWNLOAD_PATH`, `DATA_PATH`, `CLIENT_DIST` | Where media, quotes/facts/greetings and the built frontend live |
 | `BACKEND_HOST/PORT`, `FRONTEND_HOST/PORT` | Bind addresses |
 | `LOG_LEVEL` | `debug`, `info`, `warn` or `error` |
-| `DISPLAY_OFF_MODE` | Terminal mode, outside operating hours: `black` (default) or `power` to cut the HDMI output |
 
-Behaviour (slide duration, schedule, media types, WebSocket timings) is set in [`server/config/frontend.config.js`](server/config/frontend.config.js):
+Behaviour is set in [`server/config/frontend.config.js`](server/config/frontend.config.js):
+
+Besides the schedule, slide duration and media types it covers the **language** (`de` or `en`), **units** (metric or imperial), the **exact position and elevation** for the weather, which daily-view widgets are shown, and the logo. The browser loads these at runtime from `/config.js`, so one build serves many devices. The same keys can be set per device with `SLIDESHOW_CONFIG`.
 
 ```js
 schedule: {
@@ -108,18 +116,25 @@ image5s_25-12-2024.jpg             ignored, missing leading _
 lunch_11h-13h_01-06@15-06.jpg      June 1-15, lunchtime only
 ```
 
-## Kiosk mode
+## Displays
 
-`scripts/installer.sh` sets up a locked-down kiosk user with autologin on Debian-based systems, in either `web` (Chromium) or `terminal` (MPV) mode. `scripts/kiosk.sh` and `scripts/terminal-slide-show.sh` launch the display.
+Each device runs one of two display modes, chosen per device in the Ansible inventory:
 
-In terminal mode the installer asks what the display should do outside operating hours: show a black screen, or also cut the HDMI output (`DISPLAY_OFF_MODE=power`). The output is switched with `vcgencmd display_power` on a Raspberry Pi, or `xrandr` in an X session, and is switched back on at the configured on-time. Some monitors do not wake reliably after the signal is cut, so test yours before relying on it. If no switching tool is found, it falls back to the black screen.
+| Mode | Shows | Best for |
+| --- | --- | --- |
+| `browser` | Chromium in a single-app Wayland compositor: media plus the daily view (clock, weather, NASA picture, quotes) | Pi 4 and 5 |
+| `mpv` | Images and videos only, played by MPV | Pi 3, or when you only want plain media |
+
+Outside the schedule the screen shows black. The role can also cut the screen itself (`vcgencmd`, `wlr-randr`, HDMI-CEC or your own command), which depends on the display and needs testing on real hardware; see the [fleet documentation](ansible/README.md#switching-the-screen-off).
 
 ## API
 
 | Endpoint | Description |
 | --- | --- |
 | `GET /api/all-media` | Current media list |
-| `GET /api/server-status` | Sync and schedule state |
+| `GET /api/server-status` | Whether the backend is ready |
+| `GET /api/display-state` | `{ "active": true }` when the schedule says the display should be on |
+| `GET /config.js` | Per-device settings for the browser |
 | `GET /api/quotes`, `/facts`, `/greetings` | Daily view content |
 | `GET /api/weather`, `/nasa-apod` | Weather and picture of the day |
 | `WS /ws` | Live media, schedule and health updates |

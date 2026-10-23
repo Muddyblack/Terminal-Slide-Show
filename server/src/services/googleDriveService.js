@@ -14,7 +14,7 @@ import { isValidFile } from '../utils/fileValidator.js';
 export class GoogleDriveService {
     constructor() {
         this.logger = new Logger('GoogleDriveService');
-        this.downloadPath = path.join(process.cwd(), config.paths.downloadPath);
+        this.downloadPath = path.resolve(process.cwd(), config.paths.downloadPath);
         this.syncInterval = null;
         this.initialized = false;
         this.isPaused = false;
