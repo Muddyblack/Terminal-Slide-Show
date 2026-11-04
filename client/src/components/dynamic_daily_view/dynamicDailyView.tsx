@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 
 import '@/styles/dynamicDailyView.css';
 import BrandLogo from '@/components/brandLogo';
-import { FLYERS, PARTICLES } from '@/components/dynamic_daily_view/flyers';
 import AnimatedWeather from '@/components/dynamic_daily_view/animatedWeather';
+import { FLYERS, PARTICLES } from '@/components/dynamic_daily_view/flyers';
 import { QuoteType, WeatherType, NasaImageType, GreetingsType, OccasionType } from '@/components/dynamic_daily_view/types';
 import { useServerStatus } from '@/contexts/ServerStatusContext';
 
@@ -92,7 +92,7 @@ const DynamicDailyView = () => {
   const fetchGreetings = () => fetchWithCache('/api/greetings', 'greetings', setGreetings);
   const fetchOccasion = () => {
     // ?date=YYYY-MM-DD previews another day, e.g. /dynamic-view?date=2026-12-24
-    const date = new URLSearchParams(window.location.search).get('date');
+    const date = new window.URLSearchParams(window.location.search).get('date');
     fetchWithCache(`/api/occasion${date ? `?date=${encodeURIComponent(date)}` : ''}`, 'occasion', setOccasion);
   };
   const fetchNasaImage = () => fetchWithCache('/api/nasa-apod', 'nasa', setNasaImage);
