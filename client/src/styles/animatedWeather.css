@@ -1,7 +1,7 @@
 @reference './index.css';
 
 
-@utility weather-badge {
+.weather-badge {
   @apply absolute top-0 right-0 
            bg-weather-gradient backdrop-blur-xl
            p-4 border border-white/30 
@@ -12,32 +12,32 @@
            origin-top-right;
 }
 
-@utility weather-info-grid {
+.weather-info-grid {
   @apply grid grid-cols-2 gap-2 
            mt-2 w-full
            text-sm text-white/90;
 }
 
-@utility weather-info-item {
+.weather-info-item {
   @apply flex items-center gap-1.5
            bg-black/10 rounded-lg
            px-2 py-1.5
            hover:bg-black/20 transition-colors;
 }
 
-@utility info-icon {
+.info-icon {
   @apply w-4 h-4 text-sky-300 shrink-0;
 }
 
-@utility info-value {
+.info-value {
   @apply font-medium min-w-10 text-center;
 }
 
-@utility temperature-container {
+.temperature-container {
   @apply relative z-10;
 }
 
-@utility temperature-text {
+.temperature-text {
   @apply text-[clamp(1.25rem,4vw,2rem)]
            bg-linear-to-r from-white to-green-400
            bg-clip-text text-transparent
@@ -45,24 +45,24 @@
            animate-temperature-pulse;
 }
 
-@utility weather-details {
+.weather-details {
   @apply flex flex-col items-center 
            mt-1 z-10 relative;
 }
 
-@utility wind-info {
+.wind-info {
   @apply bg-white/10 
            px-2 py-1 
            rounded-full 
            backdrop-blur-md;
 }
 
-@utility wind-icon {
+.wind-icon {
   @apply text-sky-400
            animate-wind-sway;
 }
 
-@utility wind-direction-arrow {
+.wind-direction-arrow {
   @apply text-rose-500
            transition-transform duration-500;
 }
