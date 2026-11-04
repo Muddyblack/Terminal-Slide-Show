@@ -9,6 +9,7 @@ import { GoogleDriveService } from './services/googleDriveService.js';
 import { SlideshowManager } from './services/slideshowManager.js';
 import { Logger } from './utils/logger.js';
 import { cached } from './utils/ttlCache.js';
+import { getOccasion } from './utils/occasions.js';
 import { createServer } from 'http';
 import { webSocketManager } from './services/webSocketManager.js';
 
@@ -195,6 +196,17 @@ app.get('/api/greetings', async (req, res) => {
 });
 
 
+
+/**
+ * @route GET /api/occasion
+ * @description Today's seasonal occasion (Advent, Easter, Tag der Deutschen Einheit, ...) or null.
+ * @param {string} [req.query.date] - YYYY-MM-DD, to preview another day
+ */
+app.get('/api/occasion', (req, res) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(req.query.date || ''));
+    const date = match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : new Date();
+    res.json(getOccasion(date, { country: config.info.country, ...config.occasions }));
+});
 
 // External API Integration Routes
 /* ------------------------------------ */

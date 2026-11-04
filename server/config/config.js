@@ -14,6 +14,14 @@ export const config = {
   ...frontendConfig,
   info: {
     location: process.env.LOCATION || 'LOCATION',
+    // ISO country code; Germany-only holidays are shown when this is DE
+    country: process.env.COUNTRY || 'DE',
+  },
+  occasions: {
+    // Seasonal themes are on by default. OCCASIONS=off turns them all off.
+    enabled: (process.env.OCCASIONS || 'on').toLowerCase() !== 'off',
+    // Comma-separated ids to switch off, e.g. OCCASIONS_DISABLED=halloween,winter
+    disabled: (process.env.OCCASIONS_DISABLED || '').split(',').map((v) => v.trim()).filter(Boolean),
   },
   apiKeys: {
     NASA_API_KEY: process.env.NASA_API_KEY

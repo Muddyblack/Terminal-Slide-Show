@@ -1,12 +1,16 @@
 import { frontendConfig } from '@config/frontend.config';
-import { Calendar, Quote, Coffee, MapPin, Clock, Info } from 'lucide-react';
+import { MapPin, Info } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 import '@/styles/dynamicDailyView.css';
+import BrandLogo from '@/components/brandLogo';
+import { FLYERS, PARTICLES } from '@/components/dynamic_daily_view/flyers';
 import AnimatedWeather from '@/components/dynamic_daily_view/animatedWeather';
-import { QuoteType, WeatherType, NasaImageType, GreetingsType } from '@/components/dynamic_daily_view/types';
+import { QuoteType, WeatherType, NasaImageType, GreetingsType, OccasionType } from '@/components/dynamic_daily_view/types';
 import { useServerStatus } from '@/contexts/ServerStatusContext';
 
+
+const SNOW_THEMES = ['christmas', 'winter'];
 
 type SetterFunction = (value: any) => void;
 
@@ -21,8 +25,8 @@ const DynamicDailyView = () => {
   const [nasaImage, setNasaImage] = useState<NasaImageType | null>(null);
   const [showNasaInfo, setShowNasaInfo] = useState(false);
   const [greetings, setGreetings] = useState<GreetingsType>({});
+  const [occasion, setOccasion] = useState<OccasionType | null>(null);
   const isServerConnected = useServerStatus();
-  const [logoSrc, setLogoSrc] = useState('/slideshow.png');
   const [isImageLoading, setIsImageLoading] = useState(true);
 
   const isNight = weather ? !weather.is_day : (time.getHours() >= 18 || time.getHours() < 6); // fallback to time-based check if weather data isn't available
@@ -52,35 +56,6 @@ const DynamicDailyView = () => {
       }));
     } catch (err) {
       console.warn('Failed to save to cache:', err);
-    }
-  };
-
-  const cacheLogo = async () => {
-    try {
-      // Check cache first
-      const cachedLogo = loadFromCache('logo');
-      if (cachedLogo) {
-        return cachedLogo;
-      }
-
-      // Fetch and convert to base64 if not cached
-      const response = await fetch('/slideshow.png');
-      const blob = await response.blob();
-
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64Logo = reader.result;
-          // Save to cache
-          saveToCache('logo', base64Logo);
-          resolve(base64Logo);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch (err) {
-      console.warn('Failed to cache logo:', err);
-      return '/slideshow.png'; // Fallback to normal path
     }
   };
 
@@ -115,6 +90,11 @@ const DynamicDailyView = () => {
   const fetchQuotes = () => fetchWithCache('/api/quotes', 'quotes', setQuote);
   const fetchFacts = () => fetchWithCache('/api/facts', 'facts', setFact);
   const fetchGreetings = () => fetchWithCache('/api/greetings', 'greetings', setGreetings);
+  const fetchOccasion = () => {
+    // ?date=YYYY-MM-DD previews another day, e.g. /dynamic-view?date=2026-12-24
+    const date = new URLSearchParams(window.location.search).get('date');
+    fetchWithCache(`/api/occasion${date ? `?date=${encodeURIComponent(date)}` : ''}`, 'occasion', setOccasion);
+  };
   const fetchNasaImage = () => fetchWithCache('/api/nasa-apod', 'nasa', setNasaImage);
 
   const fetchWeather = () => {
@@ -143,7 +123,8 @@ const DynamicDailyView = () => {
         fetchWeather(),
         fetchFacts(),
         fetchNasaImage(),
-        fetchGreetings()
+        fetchGreetings(),
+        fetchOccasion()
       ]);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -172,9 +153,6 @@ const DynamicDailyView = () => {
       setShowNasaInfo(prev => !prev);
     }, 60000);
 
-    // Cache logo
-    cacheLogo().then(setLogoSrc);
-
     // Cleanup
     return () => {
       clearInterval(timer);
@@ -200,21 +178,16 @@ const DynamicDailyView = () => {
     day: 'numeric'
   });
 
-  const formattedTime = time.toLocaleTimeString('de-DE', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
+  const hours = String(time.getHours()).padStart(2, '0');
+  const minutes = String(time.getMinutes()).padStart(2, '0');
 
   return (
-    <div className={`daily-view ${isNight ? 'night' : 'day'}`}>
+    <div className={`daily-view ${isNight ? 'night' : 'day'}${occasion ? ` theme-${occasion.theme}` : ''}`}>
       {nasaImage && !isImageLoading && (
         <>
           <div
             className={`nasa-background ${isNight ? 'night' : 'day'}`}
-            style={{ 
-              backgroundImage: `url(${nasaImage.url})`
-            }}
+            style={{ backgroundImage: `url(${nasaImage.url})` }}
           />
           <div className={`background-overlay ${isNight ? 'night' : 'day'}`} />
         </>
@@ -226,75 +199,109 @@ const DynamicDailyView = () => {
         <div className="shooting-star delay-2"></div>
       </div>
 
+      {occasion && (
+        <div className={`particles ${SNOW_THEMES.includes(occasion.theme) ? 'snow' : 'glyphs'}`} aria-hidden="true">
+          {Array.from({ length: SNOW_THEMES.includes(occasion.theme) ? 60 : 16 }, (_, i) => (
+            <span
+              key={i}
+              style={{
+                left: `${(i * 37) % 100}%`,
+                animationDelay: `${-((i * 53) % 23)}s`,
+                animationDuration: `${12 + ((i * 7) % 14)}s`,
+                ['--size' as string]: `${0.25 + ((i * 13) % 10) / 14}vw`,
+                ['--drift' as string]: `${((i * 11) % 9) - 4}vw`,
+              }}
+            >
+              {!SNOW_THEMES.includes(occasion.theme) && PARTICLES[occasion.particle] && (
+                <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round">
+                  {PARTICLES[occasion.particle]}
+                </svg>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {occasion && FLYERS[occasion.theme] && (
+        <div className={`flyer${FLYERS[occasion.theme].wide ? ' wide' : ''}`} aria-hidden="true">
+          {FLYERS[occasion.theme].art}
+          <span className="flyer-shout">{FLYERS[occasion.theme].shout}</span>
+        </div>
+      )}
+
       <div className="content-wrapper">
-        <div className="dhbw-logo">
-          <img src={logoSrc} alt="DHBW Logo" />
-        </div>
-
-        {!isServerConnected && (
-          <div className="offline-badge">
-            <span className="text-yellow-300">⚠️ Offline Mode - Using Cached Data</span>
+        <div className="top-bar">
+          <div className="location-badge">
+            <MapPin />
+            <span>{frontendConfig.info.location}</span>
           </div>
-        )}
-
-        <div className="location-badge">
-          <MapPin className="text-blue-300" />
-          <span>{frontendConfig.info.location}</span>
-        </div>
-
-        <div className="main-content">
-          <h1 className="greeting-text">{getGreetings(time.getHours())}</h1>
-
-          <div className="datetime-display">
-            <div className="date">
-              <Calendar className="text-blue-300 select-none" />
-              <span className="select-text">{formattedDate}</span>
-            </div>
-            <div className="time">
-              <Clock className="text-blue-300 select-none" />
-              <span className="select-text">{formattedTime}</span>
-            </div>
-          </div>
-
-          <div className="quote-card" onClick={() => setShowTranslation(!showTranslation)}>
-            <Quote className="text-yellow-300" />
-            {isLoading ? (
-              <p className="quote-text">Lädt Zitat...</p>
-            ) : error ? (
-              <p className="quote-text text-yellow-300">{error}</p>
-            ) : quote ? (
-              <>
-                <p className="quote-text">{quote.text}</p>
-                <p className="quote-author">- {quote.author}</p>
-                {showTranslation && quote.translation && (
-                  <p className="quote-translation">{quote.translation}</p>
-                )}
-              </>
-            ) : null}
-          </div>
-
-          <div className="fact-card">
-            <Coffee className="text-emerald-300" />
-            <p>{fact}</p>
-          </div>
-        </div>
-
-        <div>
-          {weather && (
-            <AnimatedWeather
-              weatherCode={weather.weathercode}
-              temperature={weather.temperature}
-              windSpeed={weather.windspeed}
-              windDirection={weather.winddirection}
-              cloud_cover={weather.cloud_cover}
-              rain={weather.rain}
-              showers={weather.showers}
-              snowfall={weather.snowfall}
-              is_day={weather.is_day}
-              wind_gusts={weather.wind_gusts || 0}
+          {!isServerConnected && (
+            <span
+              className="offline-dot"
+              role="status"
+              title="Offline mode - using cached data"
+              aria-label="Offline mode - using cached data"
             />
           )}
         </div>
+
+        <main className="split">
+          <section className="time-block">
+            <h1 className="greeting-text">
+              {occasion ? occasion.title : getGreetings(time.getHours())}
+            </h1>
+            <div className="clock" aria-label={`${hours}:${minutes}`}>
+              {hours}
+              <span className="clock-colon">:</span>
+              {minutes}
+            </div>
+            <div className="date-text">{formattedDate}</div>
+            {occasion && <div className="occasion-text">{occasion.text}</div>}
+          </section>
+
+          <section className="reading-column">
+            <div className="quote-block" onClick={() => setShowTranslation(!showTranslation)}>
+              <div className="gold-rule" />
+              {isLoading ? (
+                <p className="quote-text">Lädt Zitat...</p>
+              ) : error ? (
+                <p className="quote-text">{error}</p>
+              ) : quote ? (
+                <>
+                  <p className="quote-text">{quote.text}</p>
+                  <p className="quote-author">{quote.author}</p>
+                  {showTranslation && quote.translation && (
+                    <p className="quote-translation">{quote.translation}</p>
+                  )}
+                </>
+              ) : null}
+            </div>
+
+            {fact && (
+              <div className="fact-block">
+                <span className="fact-kicker">Wusstest du?</span>
+                <p>{fact}</p>
+              </div>
+            )}
+          </section>
+        </main>
+
+        {weather && (
+          <AnimatedWeather
+            weatherCode={weather.weathercode}
+            temperature={weather.temperature}
+            windSpeed={weather.windspeed}
+            windDirection={weather.winddirection}
+            cloud_cover={weather.cloud_cover}
+            rain={weather.rain}
+            showers={weather.showers}
+            snowfall={weather.snowfall}
+            is_day={weather.is_day}
+            wind_gusts={weather.wind_gusts || 0}
+          />
+        )}
+
+        <BrandLogo className="brand-logo" />
 
         {nasaImage && (
           <div

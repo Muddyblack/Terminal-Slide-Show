@@ -1,19 +1,28 @@
 @reference './index.css';
 
+/* Daily view: one sky, gold as the only accent (#e3dc9c, from the logo). */
+
 .daily-view {
+  --gold: #e3dc9c;
+  --soft: rgba(255, 255, 255, 0.72);
+  --glass: rgba(255, 255, 255, 0.07);
+  --glass-line: rgba(255, 255, 255, 0.14);
   position: fixed;
   inset: 0;
   overflow: hidden;
   transition: background 0.5s ease;
-  flex-direction: column;
-}
-
-.daily-view.day {
-  background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+  color: #fff;
 }
 
 .daily-view.night {
-  background: linear-gradient(135deg, #0f172a, #1e293b, #334155);
+  background: linear-gradient(160deg, #0a1020 0%, #14203d 55%, #1d2c52 100%);
+}
+
+.daily-view.day {
+  --soft: rgba(255, 255, 255, 0.82);
+  --glass: rgba(255, 255, 255, 0.12);
+  --glass-line: rgba(255, 255, 255, 0.22);
+  background: linear-gradient(160deg, #22407a 0%, #6a5a8e 55%, #d89a5c 100%);
 }
 
 .nasa-background {
@@ -28,6 +37,336 @@
   @apply opacity-40;
 }
 
+/* Photo of the day stays visible; the overlay only tints it enough for the text */
+.background-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transition: background 0.5s ease;
+}
+
+.background-overlay.night {
+  background: linear-gradient(160deg, rgba(10, 16, 32, 0.6), rgba(20, 32, 61, 0.5), rgba(29, 44, 82, 0.45));
+}
+
+.background-overlay.day {
+  background: linear-gradient(160deg, rgba(34, 64, 122, 0.55), rgba(106, 90, 142, 0.45), rgba(216, 154, 92, 0.35));
+}
+
+.background-effects {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.shooting-star {
+  @apply absolute animate-shooting-star;
+  width: clamp(4px, 0.3vw, 8px);
+  height: clamp(4px, 0.3vw, 8px);
+}
+
+.content-wrapper {
+  position: relative;
+  z-index: 10;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  padding: clamp(1rem, 2.4vw, 4rem) clamp(1.25rem, 3vw, 5rem);
+}
+
+/* top bar */
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 1vw;
+}
+
+.location-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6vw;
+  font-size: clamp(0.9rem, 1.15vw, 2.2rem);
+  color: var(--soft);
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  border-radius: 9999px;
+  padding: 0.5vw 1.1vw;
+  backdrop-filter: blur(6px);
+}
+
+.location-badge svg {
+  width: 1.2em;
+  height: 1.2em;
+}
+
+.offline-dot {
+  width: 0.7vw;
+  min-width: 8px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 0 4px rgba(227, 220, 156, 0.18);
+}
+
+/* seasonal occasions: falling particles, a flyer and a line of text */
+.particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.particles span {
+  position: absolute;
+  top: -4vw;
+  animation: fall linear infinite;
+}
+
+/* snow: soft round dots, no emoji */
+.particles.snow span {
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 30%, rgba(255, 255, 255, 0) 72%);
+  opacity: 0.85;
+  filter: blur(0.5px);
+}
+
+.particles.glyphs span {
+  width: calc(var(--size) * 5);
+  height: calc(var(--size) * 5);
+  color: var(--gold);
+  opacity: 0.4;
+}
+
+.particles.glyphs svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes fall {
+  from {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  to {
+    transform: translate(var(--drift), 112vh) rotate(200deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .particles {
+    display: none;
+  }
+}
+
+/* Crosses the screen for ~12s, then rests until the 50s loop restarts */
+.flyer {
+  position: absolute;
+  top: 12vh;
+  left: -40vw;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3vw;
+  color: var(--gold);
+  pointer-events: none;
+  animation: fly 50s linear infinite;
+  animation-delay: 6s;
+  filter: drop-shadow(0 0 1.2vw rgba(227, 220, 156, 0.45));
+}
+
+.flyer-art {
+  width: 14vw;
+  height: auto;
+  display: block;
+}
+
+.flyer-shout {
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  font-size: 1.1vw;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.flyer.wide .flyer-art {
+  width: 36vw;
+}
+
+.flyer-bob {
+  animation: bob 1.4s ease-in-out infinite;
+}
+
+.flyer-bob.b2 {
+  animation-delay: -0.5s;
+}
+
+.flyer-bob.b3 {
+  animation-delay: -0.9s;
+}
+
+@keyframes bob {
+  50% {
+    translate: 0 -6px;
+  }
+}
+
+@keyframes fly {
+  0% {
+    transform: translate(0, 0) rotate(2deg);
+  }
+  6% {
+    transform: translate(30vw, -3vh) rotate(-2deg);
+  }
+  12% {
+    transform: translate(62vw, 2vh) rotate(2deg);
+  }
+  18%,
+  100% {
+    transform: translate(150vw, -2vh) rotate(-1deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flyer {
+    display: none;
+  }
+}
+
+.occasion-text {
+  color: var(--gold);
+  font-size: clamp(0.95rem, 1.3vw, 2.6rem);
+}
+
+/* split layout: time left, reading column right */
+.split {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 4vw;
+  align-items: center;
+  animation: fadeIn 1s ease-out;
+}
+
+.time-block {
+  display: grid;
+  gap: 0.8vw;
+  padding-left: 1vw;
+}
+
+.greeting-text {
+  font-size: clamp(1.1rem, 1.7vw, 3.4rem);
+  font-weight: 400;
+  color: var(--soft);
+  text-wrap: balance;
+}
+
+.clock {
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  font-weight: 500;
+  font-size: 12.5vw;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.clock-colon {
+  color: var(--gold);
+  animation: blink 2s ease-in-out infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clock-colon {
+    animation: none;
+  }
+}
+
+.date-text {
+  color: var(--soft);
+  font-size: clamp(1rem, 1.5vw, 3rem);
+}
+
+.reading-column {
+  /* sits below the weather card (top right) and above the logo */
+  align-self: end;
+  margin-bottom: 7vw;
+  display: grid;
+  gap: 1.6vw;
+  border-left: 1px solid var(--glass-line);
+  padding-left: 3vw;
+}
+
+.gold-rule {
+  width: 4vw;
+  height: 2px;
+  background: var(--gold);
+  border-radius: 2px;
+  margin-bottom: 1vw;
+}
+
+.quote-block {
+  cursor: pointer;
+}
+
+.quote-text {
+  font-size: clamp(1.1rem, 1.7vw, 3.4rem);
+  font-style: italic;
+  line-height: 1.45;
+}
+
+.quote-author {
+  margin-top: 0.5vw;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  font-size: clamp(0.75rem, 1vw, 2rem);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+
+.quote-translation {
+  margin-top: 0.8vw;
+  font-size: clamp(0.85rem, 1.1vw, 2.2rem);
+  color: var(--gold);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.fact-block {
+  font-size: clamp(0.85rem, 1.05vw, 2.1rem);
+  line-height: 1.5;
+  color: var(--soft);
+}
+
+.fact-kicker {
+  display: block;
+  margin-bottom: 0.3vw;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  font-size: 0.8em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+/* logo: small, bottom right, like a channel bug */
+.brand-logo {
+  position: absolute;
+  right: 2.4vw;
+  bottom: 2.2vw;
+  height: clamp(28px, 3.4vw, 80px);
+  width: auto;
+  opacity: 0.9;
+  z-index: 20;
+  pointer-events: none;
+}
+
+/* NASA info drawer */
 .nasa-info {
   position: fixed;
   top: 50%;
@@ -102,459 +441,77 @@
   padding-right: clamp(0.5rem, 0.5vw, 1rem);
 }
 
-.background-overlay {
-  position: absolute;
-  inset: 0;
-  transition: background 0.5s ease;
-  z-index: 1;
-}
 
-.background-overlay.day {
-  background: linear-gradient(135deg,
-      rgba(26, 42, 108, 0.7),
-      rgba(178, 31, 31, 0.6),
-      rgba(253, 187, 45, 0.5));
-}
-
-
-.background-overlay.night {
-  background: linear-gradient(135deg,
-      rgba(15, 23, 42, 0.8),
-      rgba(30, 41, 59, 0.7),
-      rgba(51, 65, 85, 0.6));
-}
-
-.background-overlay.night {
-  background: linear-gradient(135deg,
-      rgba(15, 23, 42, 0.8),
-      rgba(30, 41, 59, 0.7),
-      rgba(51, 65, 85, 0.6));
-}
-
-.background-effects {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-
-.shooting-star {
-  @apply absolute animate-shooting-star;
-  width: clamp(4px, 0.3vw, 8px);
-  height: clamp(4px, 0.3vw, 8px);
-}
-
-.content-wrapper {
-  position: relative;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: clamp(1rem, 2vw, 4rem);
-  color: white;
-  z-index: 10;
-  max-width: 100%;
-  margin: 0 auto;
-}
-
-.location-badge {
-  position: absolute;
-  top: clamp(2rem, 2vw, 4rem);
-  left: clamp(2rem, 2vw, 4rem);
-  display: flex;
-  align-items: center;
-  gap: clamp(0.5rem, 0.5vw, 1rem);
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(8px);
-  padding: clamp(0.75rem, 0.75vw, 1.5rem) clamp(1.5rem, 1.5vw, 3rem);
-  border-radius: 9999px;
-  font-size: clamp(1.125rem, 1.125vw, 2.25rem);
-  font-weight: 500;
-  transition: transform 0.3s ease;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-}
-
-.location-badge:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-}
-
-.main-content {
-  text-align: center;
-  max-width: clamp(48rem, 50vw, 96rem);
-  animation: fadeIn 1s ease-out;
-}
-
-.greeting-text {
-  font-family: "Noto Color Emoji", "Roboto", sans-serif;
-  font-size: clamp(4rem, 4vw, 8rem);
-  font-weight: bold;
-  margin-bottom: clamp(1.5rem, 1.5vw, 3rem);
-  color: #fff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-.datetime-display {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(0.5rem, 0.5vw, 1rem);
-  margin-bottom: clamp(2rem, 2vw, 4rem);
-}
-
-.date,
-.time {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(0.75rem, 0.75vw, 1.5rem);
-  font-size: clamp(1.5rem, 1.5vw, 3rem);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-.quote-card,
-.fact-card {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(12px);
-  border-radius: clamp(1rem, 1vw, 2rem);
-  padding: clamp(1.5rem, 1.5vw, 3rem);
-  margin: clamp(1rem, 1vw, 2rem) 0;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  max-width: clamp(48rem, 50vw, 96rem);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transform-origin: center;
-  will-change: transform, background;
-}
-
-.quote-card:hover,
-.fact-card:hover {
-  transform: translateY(-4px) scale(1.01);
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-}
-
-.quote-text {
-  font-size: clamp(1.5rem, 1.5vw, 3rem);
-  font-style: italic;
-  margin: clamp(1rem, 1vw, 2rem) 0;
-  line-height: 1.4;
-}
-
-.quote-author {
-  font-size: clamp(1.125rem, 1.125vw, 2.25rem);
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.quote-translation {
-  font-size: clamp(1rem, 1vw, 2rem);
-  color: #93c5fd;
-  margin-top: clamp(1rem, 1vw, 2rem);
-  animation: fadeIn 0.3s ease-out;
-}
-
-
-@media (max-width: 640px) {
-  .greeting-text {
-    font-size: 2.5rem;
-  }
-
-  .location-badge {
-    font-size: 1rem;
-    padding: 0.5rem 1rem;
-  }
-
-  .quote-text {
-    font-size: 1.25rem;
-  }
-}
-
-.dhbw-logo {
-  position: absolute;
-  /* Change from fixed pixel value to viewport-based units with a minimum */
-  bottom: max(30px, 7vh); /* This ensures it stays at least 70px from bottom but scales with viewport height */
-  right: clamp(10px, 1vw, 10px);
-  padding: clamp(0.75rem, 0.75vw, 1.5rem);
-  border-radius: clamp(1rem, 1vw, 2rem);
-  transition: all 0.3s ease;
-  z-index: 20;
-}
-
-.day .dhbw-logo {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(8px);
-}
-
-.night .dhbw-logo {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-}
-
-.dhbw-logo img {
-  height: clamp(120px, min(12vh, 240px), 240px); /* This prevents the logo from getting too large */
-  width: auto;
-  transition: all 0.3s ease;
-}
-
-.day .dhbw-logo img {
-  opacity: 0.9;
-  filter: none;
-}
-
-.night .dhbw-logo img {
-  opacity: 1;
-  /* Complex filter to darken grays while preserving red */
-  filter:
-    brightness(0.9)
-    /* Slightly reduce overall brightness */
-    contrast(1.2)
-    /* Increase contrast */
-    saturate(1.2)
-    /* Boost color saturation */
-    hue-rotate(-5deg);
-}
-
-.dhbw-logo:hover {
-  transform: translateY(-2px);
-}
-
-.night .dhbw-logo:hover {
-  background: rgba(0, 0, 0, 0.5);
-}
-
-@media (max-width: 640px) {
-  .dhbw-logo img {
-    height: 30px;
-  }
-
-  .dhbw-logo {
-    bottom: 0.5rem;
-    right: 0.5rem;
-    padding: 0.5rem;
-  }
-}
-
-
-@media (max-width: 1200px) {
-  .greeting-text {
-    font-size: 3.5rem;
-  }
-
-  .location-badge {
-    font-size: 1.125rem;
-    padding: 0.6rem 1.2rem;
-  }
-
-  .quote-text {
-    font-size: 1.375rem;
-  }
-}
-
+/* Narrow screens: stack the columns */
 @media (max-width: 900px) {
-  .greeting-text {
-    font-size: 3rem;
+  .content-wrapper {
+    overflow-y: auto;
+  }
+
+  .split {
+    grid-template-columns: 1fr;
+    gap: 6vw;
+    align-content: center;
+    padding-block: 4vw;
+  }
+
+  .clock {
+    font-size: 26vw;
+  }
+
+  .greeting-text,
+  .quote-text {
+    font-size: 1.15rem;
+  }
+
+  .date-text,
+  .fact-block {
+    font-size: 0.95rem;
+  }
+
+  .quote-author {
+    font-size: 0.8rem;
+  }
+
+  .reading-column {
+    align-self: auto;
+    margin-bottom: 0;
+    border-left: 0;
+    padding-left: 0;
+    gap: 4vw;
+  }
+
+  .gold-rule {
+    width: 12vw;
+    margin-bottom: 3vw;
   }
 
   .location-badge {
-    font-size: 1.125rem;
-    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+    padding: 0.4rem 0.9rem;
   }
 
-  .quote-text {
-    font-size: 1.375rem;
-  }
-}
-
-@media (max-width: 640px) {
-  .daily-view {
-    padding: 1rem;
+  .brand-logo {
+    right: 1rem;
+    bottom: 1rem;
+    height: 28px;
   }
 
   .nasa-info {
     top: auto;
     bottom: 1rem;
-    left: 50%;
-    transform: translateX(-50%);
-    max-width: 90%;
+    left: 1rem;
+    transform: none;
+    max-width: calc(100% - 9rem);
     border-radius: 1rem;
   }
 
-  .nasa-info.expanded {
-    transform: translateX(-50%);
-  }
-
+  .nasa-info.expanded,
   .nasa-info:hover,
   .nasa-info.expanded:hover {
-    transform: translateX(-50%);
-  }
-
-  .content-wrapper {
-    padding: 1rem;
-  }
-
-  .location-badge {
-    top: 1rem;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 0.5rem 1rem;
-    font-size: 1rem;
-  }
-
-  .main-content {
-    max-width: 100%;
-  }
-
-  .greeting-text {
-    font-size: 2.5rem;
-  }
-
-  .datetime-display {
-    gap: 0.25rem;
-    margin-bottom: 1rem;
-  }
-
-  .date,
-  .time {
-    font-size: 1.25rem;
-  }
-
-  .quote-card,
-  .fact-card {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(12px);
-    border-radius: clamp(1rem, 1vw, 2rem);
-    padding: clamp(1.5rem, 1.5vw, 3rem);
-    margin: clamp(1rem, 1vw, 2rem) 0;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    max-width: clamp(48rem, 50vw, 96rem);
-  }
-
-  .quote-card:hover,
-  .fact-card:hover {
-    transform: translateY(-4px);
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  .quote-text {
-    font-size: clamp(1.5rem, 1.5vw, 3rem);
-    font-style: italic;
-    margin: clamp(1rem, 1vw, 2rem) 0;
-    line-height: 1.4;
-  }
-
-  .quote-author {
-    font-size: clamp(1.125rem, 1.125vw, 2.25rem);
-    color: rgba(255, 255, 255, 0.8);
-  }
-
-  .quote-translation {
-    font-size: clamp(1rem, 1vw, 2rem);
-    color: #93c5fd;
-    margin-top: clamp(1rem, 1vw, 2rem);
-    animation: fadeIn 0.3s ease-out;
-  }
-
-  .dhbw-logo {
-    position: absolute;
-    bottom: clamp(70px, 7vh, 140px);
-    right: clamp(10px, 1vw, 20px);
-    padding: clamp(0.75rem, 0.75vw, 1.5rem);
-    border-radius: clamp(1rem, 1vw, 2rem);
-    transition: all 0.3s ease;
-    z-index: 20;
-  }
-
-
-  .dhbw-logo img {
-    height: clamp(120px, 12vh, 240px);
-    width: auto;
-    transition: all 0.3s ease;
+    transform: none;
   }
 }
-
-
-/* Media Queries */
-@media (min-width: 2560px) {
-  :root {
-    font-size: 20px;
-  }
-
-  .greeting-text {
-    font-size: 6rem;
-  }
-
-  .quote-text {
-    font-size: 2.5rem;
-  }
-
-  .dhbw-logo img {
-    height: 180px;
-  }
-}
-
-@media (min-width: 3840px) {
-  :root {
-    font-size: 24px;
-  }
-
-  .greeting-text {
-    font-size: 8rem;
-  }
-
-  .quote-text {
-    font-size: 3rem;
-  }
-
-  .dhbw-logo img {
-    height: 240px;
-  }
-}
-
-@media (max-width: 640px) {
-  .greeting-text {
-    font-size: 2.5rem;
-  }
-
-  .location-badge {
-    font-size: 1rem;
-    padding: 0.5rem 1rem;
-  }
-
-  .quote-text {
-    font-size: 1.25rem;
-  }
-
-  .dhbw-logo {
-    bottom: 0.5rem;
-    right: 0.5rem;
-    padding: 0.5rem;
-  }
-
-  .dhbw-logo img {
-    height: 30px;
-  }
-}
-
-
-@media (max-width: 400px) {
-  .greeting-text {
-    font-size: 2rem;
-  }
-
-  .location-badge {
-    font-size: 0.875rem;
-    padding: 0.4rem 0.8rem;
-  }
-
-  .quote-text {
-    font-size: 1.125rem;
-  }
-}
-
-
 
 /* Animations */
 

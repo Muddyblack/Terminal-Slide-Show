@@ -40,3 +40,11 @@ export interface NasaImageType {
 export interface GreetingsType {
     [timeRange: string]: string;
 }
+
+export interface OccasionType {
+    id: string;
+    title: string;
+    text: string;
+    theme: string;
+    particle: string;
+}
