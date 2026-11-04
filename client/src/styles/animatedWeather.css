@@ -4,9 +4,10 @@
 .weather-badge {
   @apply absolute top-0 right-0 
            bg-weather-gradient backdrop-blur-xl
-           p-4 border border-white/30 
-           rounded-bl-2xl
-           shadow-lg
+           p-4 border border-t-0 border-r-0 border-white/30
+           rounded-bl-3xl
+           shadow-lg shadow-black/25
+           z-20
            max-w-[min(90vw,240px)]
            transition-all duration-300
            origin-top-right;
@@ -26,7 +27,7 @@
 }
 
 .info-icon {
-  @apply w-4 h-4 text-sky-300 shrink-0;
+  @apply w-4 h-4 text-[#e3dc9c] shrink-0;
 }
 
 .info-value {
@@ -39,9 +40,7 @@
 
 .temperature-text {
   @apply text-[clamp(1.25rem,4vw,2rem)]
-           bg-linear-to-r from-white to-green-400
-           bg-clip-text text-transparent
-           drop-shadow-[0_4px_15px_rgba(74,222,128,0.3)]
+           font-mono font-bold text-white
            animate-temperature-pulse;
 }
 
@@ -58,12 +57,12 @@
 }
 
 .wind-icon {
-  @apply text-sky-400
+  @apply text-[#e3dc9c]
            animate-wind-sway;
 }
 
 .wind-direction-arrow {
-  @apply text-rose-500
+  @apply text-[#e3dc9c]
            transition-transform duration-500;
 }
 

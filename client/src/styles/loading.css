@@ -2,11 +2,11 @@
 
 
 .loading-overlay {
-  @apply fixed inset-0 flex flex-col items-center justify-center bg-black/90 bg-[url('/LOGO.png')] bg-cover bg-no-repeat bg-center z-50;
+  @apply fixed inset-0 flex flex-col items-center justify-center bg-[linear-gradient(160deg,#0a1020,#14203d_55%,#1d2c52)] z-50;
 }
 
 .loading-overlay-background {
-  @apply absolute inset-0 bg-black/70 z-1;
+  @apply absolute inset-0 z-1;
 }
 
 .loading-text {

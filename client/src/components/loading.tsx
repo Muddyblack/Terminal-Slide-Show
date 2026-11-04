@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 import React from 'react';
 
-import {Server} from '@/components/assets/icons';
+import BrandLogo from '@/components/brandLogo';
 import '@/styles/loading.css';
 import BBLoader from '@/components/loader';
 
@@ -68,7 +68,7 @@ const Loading: React.FC<LoadingProps> = ({ isServerConnecting }): React.ReactEle
             transformOrigin: "center center"
           }}
         >
-          <Server/>
+          <BrandLogo variant="mark" height="100%" />
         </motion.div>
       ) : (
         // Custom loader component for media loading state
