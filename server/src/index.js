@@ -9,6 +9,7 @@ import { GoogleDriveService } from './services/googleDriveService.js';
 import { SlideshowManager } from './services/slideshowManager.js';
 import { Logger } from './utils/logger.js';
 import { cached } from './utils/ttlCache.js';
+import { buildQueue } from './services/contentService.js';
 import { getOccasion } from './utils/occasions.js';
 import { createServer } from 'http';
 import { webSocketManager } from './services/webSocketManager.js';
@@ -196,6 +197,36 @@ app.get('/api/greetings', async (req, res) => {
 });
 
 
+
+/**
+ * @route GET /api/content
+ * @description Shuffled queue of rotating texts (city facts, on this day, sun times, tips, ...) plus quotes.
+ * Feeds are fetched here and cached, so a failing source is skipped and the local pool still works.
+ * @param {string} [req.query.location]
+ */
+app.get('/api/content', async (req, res) => {
+    const location = String(req.query.location || config.info.location);
+    try {
+        const body = await cached(`content:${location}`, 10 * 60 * 1000, async () => {
+            let place = null;
+            try {
+                const w = await cached(`weather:${location}`, 10 * 60 * 1000, () => fetchWeather(location));
+                if (w) {
+                    place = { ...w.location, current: w.current_weather };
+                }
+            } catch (error) {
+                logger.warn('Content without weather:', error.message);
+            }
+            const items = await buildQueue({ location, date: new Date(), place, fetchFn: fetch });
+            const quotesData = JSON.parse(await fs.readFile(path.join(process.cwd(), 'data', 'quotes.json'), 'utf8'));
+            return { items, quotes: [...quotesData.quotes].sort(() => Math.random() - 0.5).slice(0, 20) };
+        });
+        res.json(body);
+    } catch (error) {
+        logger.error('Failed to build content queue:', error);
+        res.status(500).json({ error: 'Failed to build content' });
+    }
+});
 
 /**
  * @route GET /api/occasion

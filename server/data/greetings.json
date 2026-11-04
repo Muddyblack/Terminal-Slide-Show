@@ -1,12 +1,45 @@
 {
-  "0-5": "Durchhalten beim Lernen! 📚",
-  "5-8": "Früher Vogel fängt die Vorlesung! 🌅",
-  "8-10": "Guten Morgen, erste Vorlesung! 👋",
-  "10-12": "Konzentriert bleiben! ✍️",
-  "12-14": "Mahlzeit! Mensa-Zeit! 🍽️",
-  "14-16": "Durchhalten, zweite Tageshälfte! 💪",
-  "16-18": "Letzte Vorlesungen für heute! 🎓",
-  "18-20": "Zeit für die Projektarbeit! 💻",
-  "20-22": "Lerngruppen-Zeit! 📖",
-  "22-24": "Nachtschicht oder Feierabend? 🌙"
+  "0-5": [
+    "Durchhalten beim Lernen! 📚",
+    "Noch wach? Gönn dir bald Schlaf. 🌙",
+    "Nachtschicht, du schaffst das! 💻"
+  ],
+  "5-8": [
+    "Früher Vogel fängt die Vorlesung! 🌅",
+    "Guten Morgen, schön dass du früh da bist! ☕"
+  ],
+  "8-10": [
+    "Guten Morgen, erste Vorlesung! 👋",
+    "Frisch ans Werk! ✨",
+    "Auf einen produktiven Tag! 🚀"
+  ],
+  "10-12": [
+    "Konzentriert bleiben! ✍️",
+    "Weiter so, bald ist Mittag! 🍀"
+  ],
+  "12-14": [
+    "Mahlzeit! Mensa-Zeit! 🍽️",
+    "Mittagspause, guten Appetit! 🥗"
+  ],
+  "14-16": [
+    "Durchhalten, zweite Tageshälfte! 💪",
+    "Kaffeezeit? Der Nachmittag läuft! ☕"
+  ],
+  "16-18": [
+    "Letzte Vorlesungen für heute! 🎓",
+    "Fast geschafft für heute! 🌇"
+  ],
+  "18-20": [
+    "Zeit für die Projektarbeit! 💻",
+    "Guten Abend, schön dass ihr da seid! 🌆",
+    "Noch eine Runde Code? 💻"
+  ],
+  "20-22": [
+    "Lerngruppen-Zeit! 📖",
+    "Ruhiger Abend, gute Zeit zum Lernen! 📚"
+  ],
+  "22-24": [
+    "Nachtschicht oder Feierabend? 🌙",
+    "Gute Nacht bald, morgen geht es weiter! 🌌"
+  ]
 }

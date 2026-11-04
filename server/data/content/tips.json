@@ -1,0 +1,28 @@
+{
+  "tips": [
+    "Kurz aufstehen: Nach 45 Minuten am Bildschirm hilft eine Minute Dehnen.",
+    "Mach Pausen: Alle 20 Minuten 20 Sekunden auf etwas in 6 Metern Entfernung schauen.",
+    "Ein Glas Wasser jetzt hilft der Konzentration mehr als der dritte Kaffee.",
+    "Schreib dir die nächste Aufgabe auf, bevor du Feierabend machst. Morgen startest du schneller.",
+    "Commit-Nachrichten sind für dein späteres Ich: erkläre das Warum, nicht nur das Was.",
+    "Ein kurzer Spaziergang am See bringt oft die Lösung für das Problem von vorhin."
+  ],
+  "words": [
+    ["Fernweh", "Sehnsucht nach fernen Orten."],
+    ["Dreikäsehoch", "Ein kleines Kind."],
+    ["Gemütlichkeit", "Das Gefühl von Wärme, Ruhe und Geborgenheit."],
+    ["Torschlusspanik", "Die Angst, eine Gelegenheit zu verpassen."],
+    ["Zeitgeist", "Der Geist einer Epoche."],
+    ["Waldeinsamkeit", "Das Gefühl der Ruhe allein im Wald."],
+    ["Ohrwurm", "Ein Lied, das man nicht mehr aus dem Kopf bekommt."],
+    ["Kopfkino", "Lebhafte Vorstellungen im Kopf."]
+  ],
+  "science": [
+    "Licht braucht von der Sonne zur Erde etwa 8 Minuten und 20 Sekunden.",
+    "Ein Tag auf der Venus ist länger als ein Jahr auf der Venus.",
+    "Das menschliche Herz schlägt rund 100 000 Mal am Tag.",
+    "Honig wird nie schlecht, wenn er trocken und dicht gelagert wird.",
+    "Der erste Computerbug war ein echter Nachtfalter, gefunden 1947 in einem Relais.",
+    "Die Binärzahl 1111 1111 ergibt 255, die größte Zahl, die in ein Byte passt."
+  ]
+}

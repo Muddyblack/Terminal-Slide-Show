@@ -38,7 +38,7 @@ export interface NasaImageType {
 }
 
 export interface GreetingsType {
-    [timeRange: string]: string;
+    [timeRange: string]: string | string[];
 }
 
 export interface OccasionType {
@@ -47,4 +47,14 @@ export interface OccasionType {
     text: string;
     theme: string;
     particle: string;
+}
+
+export interface ContentItem {
+    kind: string;
+    text: string;
+}
+
+export interface ContentType {
+    items: ContentItem[];
+    quotes: QuoteType[];
 }

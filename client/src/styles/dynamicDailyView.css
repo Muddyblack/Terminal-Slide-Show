@@ -314,6 +314,32 @@
 
 .quote-block {
   cursor: pointer;
+  animation: textIn 0.8s ease-out;
+}
+
+.fact-block,
+.greeting-text {
+  animation: textIn 0.8s ease-out;
+}
+
+@keyframes textIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quote-block,
+  .fact-block,
+  .greeting-text {
+    animation: none;
+  }
 }
 
 .quote-text {

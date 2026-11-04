@@ -6,9 +6,12 @@ import '@/styles/dynamicDailyView.css';
 import BrandLogo from '@/components/brandLogo';
 import AnimatedWeather from '@/components/dynamic_daily_view/animatedWeather';
 import { FLYERS, PARTICLES } from '@/components/dynamic_daily_view/flyers';
-import { QuoteType, WeatherType, NasaImageType, GreetingsType, OccasionType } from '@/components/dynamic_daily_view/types';
+import { QuoteType, WeatherType, NasaImageType, GreetingsType, OccasionType, ContentType } from '@/components/dynamic_daily_view/types';
 import { useServerStatus } from '@/contexts/ServerStatusContext';
 
+
+/** How long each text stays on screen */
+const ROTATE_MS = 25000;
 
 const SNOW_THEMES = ['christmas', 'winter'];
 
@@ -20,6 +23,8 @@ const DynamicDailyView = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error] = useState<string | null>(null);
   const [fact, setFact] = useState<string | null>(null);
+  const [content, setContent] = useState<ContentType | null>(null);
+  const [step, setStep] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
   const [weather, setWeather] = useState<WeatherType | null>(null);
   const [nasaImage, setNasaImage] = useState<NasaImageType | null>(null);
@@ -88,6 +93,14 @@ const DynamicDailyView = () => {
   };
 
   const fetchQuotes = () => fetchWithCache('/api/quotes', 'quotes', setQuote);
+  const fetchContent = () =>
+    fetchWithCache(
+      `/api/content?location=${encodeURIComponent(frontendConfig.info.location)}`,
+      'content',
+      (data: ContentType) => {
+        if (data?.items?.length) setContent(data);
+      }
+    );
   const fetchFacts = () => fetchWithCache('/api/facts', 'facts', setFact);
   const fetchGreetings = () => fetchWithCache('/api/greetings', 'greetings', setGreetings);
   const fetchOccasion = () => {
@@ -109,7 +122,8 @@ const DynamicDailyView = () => {
     for (const range in greetings) {
       const [start, end] = range.split('-').map(Number);
       if (hour >= start && hour < end) {
-        return greetings[range];
+        const options = greetings[range];
+        return Array.isArray(options) ? options[step % options.length] : options;
       }
     }
     return 'Nachtschicht oder Feierabend? 🌙';
@@ -122,6 +136,7 @@ const DynamicDailyView = () => {
         fetchQuotes(),
         fetchWeather(),
         fetchFacts(),
+        fetchContent(),
         fetchNasaImage(),
         fetchGreetings(),
         fetchOccasion()
@@ -148,6 +163,9 @@ const DynamicDailyView = () => {
       }
     }, 600000); // 10 minutes
 
+    // Rotate facts, quotes and greetings so the screen does not show the same text all day
+    const rotateTimer = setInterval(() => setStep((prev) => prev + 1), ROTATE_MS);
+
     // NASA info auto-toggle timer
     const nasaInfoTimer = setInterval(() => {
       setShowNasaInfo(prev => !prev);
@@ -158,6 +176,7 @@ const DynamicDailyView = () => {
       clearInterval(timer);
       clearInterval(contentTimer);
       clearInterval(nasaInfoTimer);
+      clearInterval(rotateTimer);
     };
   }, [isServerConnected]);  // Re-run when connection status changes
 
@@ -170,6 +189,9 @@ const DynamicDailyView = () => {
       img.src = nasaImage.url;
     }
   }, [nasaImage?.url]);
+
+  const item = content ? content.items[step % content.items.length] : null;
+  const shownQuote = content?.quotes.length ? content.quotes[step % content.quotes.length] : quote;
 
   const formattedDate = time.toLocaleDateString('de-DE', {
     weekday: 'long',
@@ -247,7 +269,7 @@ const DynamicDailyView = () => {
 
         <main className="split">
           <section className="time-block">
-            <h1 className="greeting-text">
+            <h1 className="greeting-text" key={`g${step}`}>
               {occasion ? occasion.title : getGreetings(time.getHours())}
             </h1>
             <div className="clock" aria-label={`${hours}:${minutes}`}>
@@ -260,27 +282,27 @@ const DynamicDailyView = () => {
           </section>
 
           <section className="reading-column">
-            <div className="quote-block" onClick={() => setShowTranslation(!showTranslation)}>
+            <div className="quote-block" key={`q${step}`} onClick={() => setShowTranslation(!showTranslation)}>
               <div className="gold-rule" />
               {isLoading ? (
                 <p className="quote-text">Lädt Zitat...</p>
               ) : error ? (
                 <p className="quote-text">{error}</p>
-              ) : quote ? (
+              ) : shownQuote ? (
                 <>
-                  <p className="quote-text">{quote.text}</p>
-                  <p className="quote-author">{quote.author}</p>
-                  {showTranslation && quote.translation && (
-                    <p className="quote-translation">{quote.translation}</p>
+                  <p className="quote-text">{shownQuote.text}</p>
+                  <p className="quote-author">{shownQuote.author}</p>
+                  {showTranslation && shownQuote.translation && (
+                    <p className="quote-translation">{shownQuote.translation}</p>
                   )}
                 </>
               ) : null}
             </div>
 
-            {fact && (
-              <div className="fact-block">
-                <span className="fact-kicker">Wusstest du?</span>
-                <p>{fact}</p>
+            {(item || fact) && (
+              <div className="fact-block" key={`f${step}`}>
+                <span className="fact-kicker">{item ? item.kind : 'Wusstest du?'}</span>
+                <p>{item ? item.text : fact}</p>
               </div>
             )}
           </section>

@@ -1,0 +1,41 @@
+{
+  "bodensee": [
+    "Der Bodensee ist mit 536 km² der drittgrößte See Mitteleuropas.",
+    "Der Bodensee grenzt an Deutschland, Österreich und die Schweiz, und der Seespiegel hat nirgends eine festgelegte Grenze.",
+    "Der tiefste Punkt des Bodensees liegt bei 254 Metern, vor Fischbach-Uttwil.",
+    "Der Rhein fließt bei Bregenz in den Bodensee und bei Stein am Rhein wieder hinaus.",
+    "Zum Bodenseeklima gehört der Föhn: Bei klarer Sicht sind die Alpen zum Greifen nah.",
+    "Etwa 4,5 Millionen Menschen in Baden-Württemberg trinken Wasser aus dem Bodensee.",
+    "Die Bodensee-Felchen ist der bekannteste Speisefisch des Sees.",
+    "Die Insel Mainau gilt wegen ihres milden Klimas als Blumeninsel mit Palmen und Zitrusbäumen.",
+    "Die Reichenau im Untersee ist UNESCO-Weltkulturerbe, mit Klöstern aus dem 9. Jahrhundert.",
+    "Die Pfahlbauten bei Unteruhldingen zeigen, wie Menschen vor über 5000 Jahren am See lebten."
+  ],
+  "cities": {
+    "friedrichshafen": [
+      "Friedrichshafen entstand 1811, als die Reichsstadt Buchhorn mit dem Dorf Hofen vereinigt wurde.",
+      "Am 2. Juli 1900 startete der erste Zeppelin von einer schwimmenden Halle bei Manzell am Bodensee.",
+      "Das Zeppelin Museum zeigt die größte Sammlung zur Geschichte der Luftschifffahrt.",
+      "Die Schlosskirche ist eines der bekanntesten Barockbauwerke am Bodensee.",
+      "Die Zeppelin NT startet bis heute für Rundflüge in Friedrichshafen.",
+      "Das Dornier Museum erzählt über 100 Jahre Luft- und Raumfahrtgeschichte.",
+      "Die Messe Friedrichshafen ist unter anderem Ort der Aero, der größten Luftfahrtmesse für die allgemeine Luftfahrt in Europa.",
+      "Die Uferpromenade ist über drei Kilometer lang und bietet Alpenblick."
+    ],
+    "konstanz": [
+      "Konstanz blieb im Zweiten Weltkrieg unzerstört, weil die Stadt direkt an der Schweizer Grenze liegt.",
+      "Von 1414 bis 1418 tagte in Konstanz das Konzil, mit bis zu 70 000 Gästen.",
+      "Die Imperia, eine 9 Meter hohe drehbare Statue, steht seit 1993 am Hafen.",
+      "Der Rhein verlässt hier den Obersee und fließt in den Untersee.",
+      "Die Universität Konstanz wurde 1966 gegründet und gilt als Exzellenzuniversität.",
+      "Mit der Fähre kommt man von Konstanz-Staad nach Meersburg."
+    ],
+    "ravensburg": [
+      "Ravensburg ist die Stadt der Türme: Der Mehlsack ist 51 Meter hoch.",
+      "Der Ravensburger Verlag wurde 1883 gegründet und machte die Stadt zur Spielestadt.",
+      "Die Veitsburg über der Stadt stammt aus dem 12. Jahrhundert.",
+      "Die Ravensburger Altstadt ist fast vollständig erhalten.",
+      "Die Humpis-Gesellschaft handelte im Mittelalter mit ganz Europa."
+    ]
+  }
+}
