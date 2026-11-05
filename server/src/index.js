@@ -316,8 +316,10 @@ app.get('/api/apod-image', async (req, res) => {
     }
 
     try {
-        const image = await cached(`apod-image:${src.href}`, 24 * 60 * 60 * 1000, async () => {
-            const r = await fetch(src.href, { headers: { 'User-Agent': 'TerminalSlideShow/1.0 (https://github.com/Muddyblack/Terminal-Slide-Show)' } });
+        // Rebuilt from the validated parts only, so nothing else from the query reaches fetch()
+        const target = `https://${src.hostname}${src.pathname}${src.search}`;
+        const image = await cached(`apod-image:${target}`, 24 * 60 * 60 * 1000, async () => {
+            const r = await fetch(target, { headers: { 'User-Agent': 'TerminalSlideShow/1.0 (https://github.com/Muddyblack/Terminal-Slide-Show)' } });
             if (!r.ok) throw new Error(`Image responded with ${r.status}`);
             return { type: r.headers.get('content-type') || 'image/jpeg', body: Buffer.from(await r.arrayBuffer()) };
         });

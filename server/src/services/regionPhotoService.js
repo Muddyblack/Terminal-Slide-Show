@@ -28,8 +28,15 @@ export function geocode(name) {
   });
 }
 
-const stripHtml = (html = '') =>
-  html.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
+const stripHtml = (html = '') => {
+  // Strip tags until none are left (nested input survives a single pass), decode &amp; last
+  let text = String(html);
+  for (let prev; prev !== text; ) {
+    prev = text;
+    text = text.replace(/<[^>]*>/g, '');
+  }
+  return text.replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim();
+};
 
 export function toPhoto(page) {
   const info = page.imageinfo?.[0];

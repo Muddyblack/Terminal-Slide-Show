@@ -27,7 +27,7 @@
 }
 
 .info-icon {
-  @apply w-4 h-4 text-[#e3dc9c] shrink-0;
+  @apply w-4 h-4 text-[var(--gold)] shrink-0;
 }
 
 .info-value {
@@ -57,12 +57,12 @@
 }
 
 .wind-icon {
-  @apply text-[#e3dc9c]
+  @apply text-[var(--gold)]
            animate-wind-sway;
 }
 
 .wind-direction-arrow {
-  @apply text-[#e3dc9c]
+  @apply text-[var(--gold)]
            transition-transform duration-500;
 }
 
