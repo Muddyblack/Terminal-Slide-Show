@@ -108,7 +108,11 @@ const DynamicDailyView = () => {
     const date = new window.URLSearchParams(window.location.search).get('date');
     fetchWithCache(`/api/occasion${date ? `?date=${encodeURIComponent(date)}` : ''}`, 'occasion', setOccasion);
   };
-  const fetchNasaImage = () => fetchWithCache('/api/nasa-apod', 'nasa', setNasaImage);
+  // Ignore the NASA logo placeholder, e.g. from an older cached response
+  const fetchNasaImage = () =>
+    fetchWithCache('/api/nasa-apod', 'nasa', (data: NasaImageType) => {
+      if (data?.url && !/nasa-logo/i.test(data.url)) setNasaImage(data);
+    });
 
   const fetchWeather = () => {
     fetchWithCache(
@@ -186,6 +190,7 @@ const DynamicDailyView = () => {
       img.onload = () => {
         setIsImageLoading(false);
       };
+      img.onerror = () => console.warn('Background image failed to load:', nasaImage.url);
       img.src = nasaImage.url;
     }
   }, [nasaImage?.url]);
@@ -323,7 +328,7 @@ const DynamicDailyView = () => {
           />
         )}
 
-        <BrandLogo className="brand-logo" />
+        <BrandLogo variant="wide" className="brand-logo" />
 
         {nasaImage && (
           <div

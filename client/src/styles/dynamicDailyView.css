@@ -380,14 +380,21 @@
   color: var(--gold);
 }
 
-/* logo: small, bottom right, like a channel bug */
+/* logo: bottom right, on a frosted chip so it stays readable on any picture */
 .brand-logo {
   position: absolute;
-  right: 2.4vw;
-  bottom: 2.2vw;
-  height: clamp(28px, 3.4vw, 80px);
+  right: 2vw;
+  bottom: 2vw;
+  height: clamp(34px, 3.4vw, 76px);
   width: auto;
-  opacity: 0.9;
+  box-sizing: content-box;
+  padding: 0.5vw 0.9vw;
+  border-radius: 1.2vw;
+  /* same glass as the weather card */
+  background: var(--background-image-weather-gradient);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
   z-index: 20;
   pointer-events: none;
 }
@@ -520,7 +527,9 @@
   .brand-logo {
     right: 1rem;
     bottom: 1rem;
-    height: 28px;
+    height: 30px;
+    padding: 5px 8px;
+    border-radius: 10px;
   }
 
   .nasa-info {

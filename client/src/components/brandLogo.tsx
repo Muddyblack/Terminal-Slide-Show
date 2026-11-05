@@ -33,8 +33,8 @@ const MarkShapes = () => (
 );
 
 interface BrandLogoProps {
-  /** "side": mark with the name on two lines. "mark": only the symbol. */
-  variant?: 'side' | 'mark';
+  /** "side": mark with the name on two lines. "wide": name on one line between the mark's halves. "mark": only the symbol. */
+  variant?: 'side' | 'wide' | 'mark';
   className?: string;
   /** Height in CSS units; width follows the aspect ratio. */
   height?: string | number;
@@ -57,6 +57,38 @@ const BrandLogo: React.FC<BrandLogoProps> = ({ variant = 'side', className, heig
     );
   }
 
+  if (variant === 'wide') {
+    // Upper and lower half of the mark, pulled apart, with the name on one line in the gap
+    return (
+      <svg
+        viewBox="0 0 210 100"
+        role="img"
+        aria-label="Terminal Slideshow"
+        className={className}
+        style={style}
+      >
+        <svg x="55" y="0" width="100" height="36" viewBox="0 4 100 36">
+          <MarkShapes />
+        </svg>
+        <svg x="55" y="64" width="100" height="36" viewBox="0 60 100 36">
+          <MarkShapes />
+        </svg>
+        <text
+          x="105"
+          y="55"
+          textAnchor="middle"
+          fontFamily="Orbitron, Oxanium, sans-serif"
+          fontSize="14"
+          fontWeight="600"
+          letterSpacing="0.5"
+          fill={GOLD}
+        >
+          TERMINAL SLIDESHOW
+        </text>
+      </svg>
+    );
+  }
+
   return (
     <svg
       viewBox="0 0 190 40"
@@ -68,20 +100,20 @@ const BrandLogo: React.FC<BrandLogoProps> = ({ variant = 'side', className, heig
       <g transform="scale(0.4)"><MarkShapes /></g>
       <text
         x="48"
-        y="17"
+        y="16"
         fontFamily="Orbitron, Oxanium, sans-serif"
-        fontSize="8"
-        letterSpacing="3"
-        fontWeight="500"
-        fill={GOLD_MID}
+        fontSize="10.5"
+        letterSpacing="2.4"
+        fontWeight="600"
+        fill={GOLD}
       >
         TERMINAL
       </text>
       <text
         x="47"
-        y="34"
+        y="35"
         fontFamily="Orbitron, Oxanium, sans-serif"
-        fontSize="15"
+        fontSize="16"
         fontWeight="700"
         fill={GOLD}
       >

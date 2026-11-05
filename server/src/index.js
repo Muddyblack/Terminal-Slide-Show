@@ -243,24 +243,74 @@ app.get('/api/occasion', (req, res) => {
 /* ------------------------------------ */
 
 /**
+ * Wikimedia Commons picture of the day, shaped like a NASA APOD response.
+ * Used when the NASA API is unavailable or only returns its logo.
+ */
+async function fetchWikimediaPotd() {
+    const today = new Date().toISOString().slice(0, 10).replaceAll('-', '/');
+    const response = await fetch(`https://en.wikipedia.org/api/rest_v1/feed/featured/${today}`, {
+        headers: { 'User-Agent': 'TerminalSlideShow/1.0' },
+    });
+    if (!response.ok) throw new Error(`Wikimedia responded with ${response.status}`);
+    const { image } = await response.json();
+    if (!image?.thumbnail?.source) throw new Error('Wikimedia returned no picture of the day');
+    const artist = image.artist?.text ? ` Photo: ${image.artist.text}${image.license?.type ? ` (${image.license.type})` : ''}.` : '';
+    return {
+        media_type: 'image',
+        title: image.title.replace(/^File:/, '').replace(/\.\w+$/, '').replace(/_/g, ' '),
+        url: '/api/apod-image',
+        source_url: image.thumbnail.source,
+        explanation: `${image.description?.text || 'Wikimedia Commons picture of the day.'}${artist}`,
+    };
+}
+
+/**
+ * @route GET /api/apod-image
+ * @description Picture of the day served from our own origin (no hotlinking from the browser)
+ */
+app.get('/api/apod-image', async (req, res) => {
+    try {
+        const apod = await cached('nasa-apod', 60 * 60 * 1000, fetchWikimediaPotd);
+        const src = apod.source_url || apod.url;
+        const image = await cached(`apod-image:${src}`, 60 * 60 * 1000, async () => {
+            const r = await fetch(src, { headers: { 'User-Agent': 'TerminalSlideShow/1.0' } });
+            if (!r.ok) throw new Error(`Image responded with ${r.status}`);
+            return { type: r.headers.get('content-type') || 'image/jpeg', body: Buffer.from(await r.arrayBuffer()) };
+        });
+        res.set('Content-Type', image.type);
+        res.set('Cache-Control', 'public, max-age=3600');
+        res.send(image.body);
+    } catch (error) {
+        logger.error('Failed to serve APOD image:', error);
+        res.status(502).end();
+    }
+});
+
+/**
  * @route GET /api/nasa-apod
  * @description Fetch NASA Astronomy Picture of the Day
  * @throws {Error} If NASA API request fails
  */
 app.get('/api/nasa-apod', async (req, res) => {
     logger.debug('Fetching NASA APOD');
-    if (!config.apiKeys.NASA_API_KEY) {
-        return res.status(503).json({ error: 'NASA_API_KEY is not configured' });
-    }
-
     try {
         // The picture changes once a day; one upstream request per hour is plenty
         const data = await cached('nasa-apod', 60 * 60 * 1000, async () => {
-            const nasaResponse = await fetch(
-                `https://api.nasa.gov/planetary/apod?api_key=${config.apiKeys.NASA_API_KEY}`
-            );
-            if (!nasaResponse.ok) throw new Error(`NASA responded with ${nasaResponse.status}`);
-            return nasaResponse.json();
+            if (config.apiKeys.NASA_API_KEY) {
+                try {
+                    const nasaResponse = await fetch(
+                        `https://api.nasa.gov/planetary/apod?api_key=${config.apiKeys.NASA_API_KEY}`
+                    );
+                    if (!nasaResponse.ok) throw new Error(`NASA responded with ${nasaResponse.status}`);
+                    const apod = await nasaResponse.json();
+                    // NASA sometimes serves its site logo instead of a picture
+                    if (apod.media_type === 'image' && apod.url && !/nasa-logo/i.test(apod.url)) return apod;
+                    logger.warn('NASA APOD returned a placeholder, using Wikimedia picture of the day');
+                } catch (error) {
+                    logger.warn('NASA APOD failed, using Wikimedia picture of the day:', error.message);
+                }
+            }
+            return fetchWikimediaPotd();
         });
 
         res.set('Cache-Control', 'public, max-age=3600');
