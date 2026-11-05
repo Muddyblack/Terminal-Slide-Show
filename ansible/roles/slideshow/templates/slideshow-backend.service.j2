@@ -18,6 +18,7 @@ Environment=BACKEND_HOST={{ slideshow_backend_host }}
 Environment=BACKEND_PORT={{ slideshow_backend_port }}
 Environment=SLIDESHOW_CONFIG={{ slideshow_config_dir }}/config.json
 Environment=DOWNLOAD_PATH={{ slideshow_state_dir }}/media
+Environment=CACHE_PATH={{ slideshow_state_dir }}/cache
 Environment=CLIENT_DIST={{ slideshow_install_dir }}/current/client/dist
 {% if slideshow_content_dir | length > 0 %}
 Environment=DATA_PATH={{ slideshow_state_dir }}/content

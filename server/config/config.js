@@ -63,6 +63,8 @@ const defaults = {
     // Own occasions: [{ "id": "sommerfest", "date": "07-10", "title": "Sommerfest" }]
     custom: Array.isArray(occasionsFile.custom) ? occasionsFile.custom : [],
   },
+  // Look of the daily view: default, dhbw or an id from config/themes.json
+  theme: process.env.THEME || 'default',
   apiKeys: {
     NASA_API_KEY: process.env.NASA_API_KEY
   },
@@ -81,7 +83,8 @@ const defaults = {
   paths: {
     // Resolved against the working directory, so absolute paths work too
     downloadPath: process.env.DOWNLOAD_PATH || '../downloads', // Where Google Drive files are stored
-    dataPath: process.env.DATA_PATH || join(__dirname, '../data'), // Quotes, facts and greetings, per language
+    dataPath: process.env.DATA_PATH || join(__dirname, '../data'), // Quotes, facts and greetings per language, plus content/
+    cachePath: process.env.CACHE_PATH || join(__dirname, '../data/cache'), // Last good copies of the fetched feeds, must be writable
     clientDist: process.env.CLIENT_DIST || join(__dirname, '../../client/dist'), // Built frontend, if served by this backend
   },
   logging: {

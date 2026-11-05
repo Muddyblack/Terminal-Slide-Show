@@ -252,9 +252,15 @@ app.get('/api/content', limiter, async (req, res) => {
     const location = String(req.query.location || config.info.location);
     try {
         const body = await cached(`content:${location}`, 10 * 60 * 1000, async () => {
+            const quotesData = await readContent('quotes.json');
+            const quotes = [...quotesData.quotes].sort(() => Math.random() - 0.5).slice(0, 20);
+            // The rotating texts are German only; other languages keep the plain facts
+            if (config.locale.language !== 'de') return { items: [], quotes };
+
             let place = null;
             try {
-                const w = await weatherFor(location);
+                // The weather lines are written for °C and km/h
+                const w = await weatherFor(location, 'metric');
                 if (w) {
                     place = { ...w.location, current: w.current_weather };
                 }
@@ -262,8 +268,7 @@ app.get('/api/content', limiter, async (req, res) => {
                 logger.warn('Content without weather:', error.message);
             }
             const items = await buildQueue({ location, date: new Date(), place, fetchFn: fetch });
-            const quotesData = await readContent('quotes.json');
-            return { items, quotes: [...quotesData.quotes].sort(() => Math.random() - 0.5).slice(0, 20) };
+            return { items, quotes };
         });
         res.json(body);
     } catch (error) {
@@ -285,10 +290,10 @@ const dayFromQuery = (query) => {
 
 /**
  * @route GET /api/theme
- * @description The look chosen with THEME in .env, as CSS variables for the daily view.
+ * @description The look chosen with THEME in .env (or "theme" in SLIDESHOW_CONFIG), as CSS variables for the daily view.
  */
 app.get('/api/theme', limiter, (req, res) => {
-    res.json({ ...getTheme(process.env.THEME), available: Object.keys(listThemes()) });
+    res.json({ ...getTheme(config.theme), available: Object.keys(listThemes()) });
 });
 
 app.get('/api/occasion', limiter, (req, res) => {
@@ -533,12 +538,13 @@ async function fetchWeather(info, units) {
  * Cached weather for a place name. The configured location uses the configured
  * coordinates; any other name (test page preview) is looked up by name.
  * @param {string} location
+ * @param {'metric'|'imperial'} [units]
  */
-function weatherFor(location) {
-    const { info, locale } = config;
+function weatherFor(location, units = config.locale.units) {
+    const { info } = config;
     const target = location === info.location ? info : { location };
-    const key = `weather:${location}:${target.latitude}:${target.longitude}:${target.elevation}:${locale.units}`;
-    return cached(key, 10 * 60 * 1000, () => fetchWeather(target, locale.units));
+    const key = `weather:${location}:${target.latitude}:${target.longitude}:${target.elevation}:${units}`;
+    return cached(key, 10 * 60 * 1000, () => fetchWeather(target, units));
 }
 
 // Serve index.html for all other routes (SPA support)
