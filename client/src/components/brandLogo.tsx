@@ -61,21 +61,21 @@ const BrandLogo: React.FC<BrandLogoProps> = ({ variant = 'side', className, heig
     // Upper and lower half of the mark, pulled apart, with the name on one line in the gap
     return (
       <svg
-        viewBox="0 0 210 100"
+        viewBox="0 0 210 72"
         role="img"
         aria-label="Terminal Slideshow"
         className={className}
         style={style}
       >
-        <svg x="55" y="0" width="100" height="36" viewBox="0 4 100 36">
+        <svg x="70" y="0" width="70" height="25.2" viewBox="0 4 100 36">
           <MarkShapes />
         </svg>
-        <svg x="55" y="64" width="100" height="36" viewBox="0 60 100 36">
+        <svg x="70" y="46.8" width="70" height="25.2" viewBox="0 60 100 36">
           <MarkShapes />
         </svg>
         <text
           x="105"
-          y="55"
+          y="41.5"
           textAnchor="middle"
           fontFamily="Orbitron, Oxanium, sans-serif"
           fontSize="14"

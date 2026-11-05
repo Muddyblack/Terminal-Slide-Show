@@ -90,6 +90,56 @@ export async function citySummary(location, fetchFn) {
     return readCache(name);
 }
 
+// PEGELONLINE (Wasserstraßen- und Schifffahrtsverwaltung): the only gauge on the lake in this feed
+const LAKE_GAUGE = { id: 'KONSTANZ', name: 'Konstanz', latitude: 47.66075, longitude: 9.181039 };
+/** The gauge is shown for places up to this far from it */
+const LAKE_RANGE_KM = 60;
+
+export function distanceKm(lat1, lon1, lat2, lon2) {
+    const rad = (deg) => (deg * Math.PI) / 180;
+    const a =
+        Math.sin(rad(lat2 - lat1) / 2) ** 2 +
+        Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lon2 - lon1) / 2) ** 2;
+    return 6371 * 2 * Math.asin(Math.sqrt(a));
+}
+
+const LEVEL_WORDS = { low: 'niedriger', normal: 'normaler', high: 'hoher' };
+
+/**
+ * The lake line, e.g. "Pegel Konstanz: 251 cm, niedriger Wasserstand. Seit gestern unverändert."
+ * Built from a current reading and the last 24 hours.
+ * @param {{value:number, stateMnwMhw?:string}} current
+ * @param {Array<{value:number}>} [last24h]
+ */
+export function lakeLine(current, last24h = []) {
+    if (!current || typeof current.value !== 'number') return null;
+    const level = LEVEL_WORDS[current.stateMnwMhw];
+    let text = `Pegel ${LAKE_GAUGE.name}: ${Math.round(current.value)} cm${level ? `, ${level} Wasserstand` : ''}.`;
+    const first = last24h.find((m) => typeof m.value === 'number');
+    if (first) {
+        const diff = Math.round(current.value - first.value);
+        if (Math.abs(diff) < 1) text += ' Seit gestern unverändert.';
+        else text += ` Seit gestern um ${Math.abs(diff)} cm ${diff > 0 ? 'gestiegen' : 'gefallen'}.`;
+    }
+    return text;
+}
+
+/** Water level of the lake for places near the gauge, or null (too far away, feed down, ...). */
+export async function lakeInfo(place, fetchFn) {
+    if (!place) return null;
+    if (distanceKm(place.latitude, place.longitude, LAKE_GAUGE.latitude, LAKE_GAUGE.longitude) > LAKE_RANGE_KM) return null;
+    const base = `https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/${LAKE_GAUGE.id}/W`;
+    try {
+        const [current, series] = await Promise.all([
+            fetchJson(`${base}/currentmeasurement.json`, fetchFn),
+            fetchJson(`${base}/measurements.json?start=P1D`, fetchFn).catch(() => []),
+        ]);
+        return lakeLine(current, series);
+    } catch {
+        return null;
+    }
+}
+
 /** Sun lines for today, e.g. "Sonnenuntergang heute um 16:52 Uhr." */
 export function sunLines(date, lat, lon, timeZone) {
     const { sunrise, sunset } = sunTimes(date, lat, lon);
@@ -181,6 +231,8 @@ export async function buildQueue({ location, date, place, fetchFn, rand = Math.r
     if (summary) groups.Stadtfakt = [...groups.Stadtfakt, summary];
 
     if (place) {
+        const lake = await lakeInfo(place, fetchFn);
+        if (lake) groups['Bodensee aktuell'] = [lake];
         groups.Sonne = sunLines(date, place.latitude, place.longitude, place.timezone);
         const line = weatherLine(place.current);
         if (line) groups.Wetter = [line];

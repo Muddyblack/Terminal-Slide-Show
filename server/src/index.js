@@ -10,6 +10,8 @@ import { SlideshowManager } from './services/slideshowManager.js';
 import { Logger } from './utils/logger.js';
 import { cached } from './utils/ttlCache.js';
 import { buildQueue } from './services/contentService.js';
+import { occasionPhotoIfReady } from './services/occasionPhotoService.js';
+import { regionPhotosIfReady, pickDaily } from './services/regionPhotoService.js';
 import { getOccasion } from './utils/occasions.js';
 import { createServer } from 'http';
 import { webSocketManager } from './services/webSocketManager.js';
@@ -233,23 +235,27 @@ app.get('/api/content', async (req, res) => {
  * @description Today's seasonal occasion (Advent, Easter, Tag der Deutschen Einheit, ...) or null.
  * @param {string} [req.query.date] - YYYY-MM-DD, to preview another day
  */
+/** The day from a ?date=YYYY-MM-DD query, or today. */
+const dayFromQuery = (query) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(query.date || ''));
+    return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : new Date();
+};
+
 app.get('/api/occasion', (req, res) => {
-    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(req.query.date || ''));
-    const date = match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : new Date();
-    res.json(getOccasion(date, { country: config.info.country, ...config.occasions }));
+    res.json(getOccasion(dayFromQuery(req.query), { country: config.info.country, ...config.occasions }));
 });
 
 // External API Integration Routes
 /* ------------------------------------ */
 
-/**
- * Wikimedia Commons picture of the day, shaped like a NASA APOD response.
- * Used when the NASA API is unavailable or only returns its logo.
- */
+/** Pictures are proxied so the browser only talks to our own origin. */
+const imageProxyUrl = (src) => `/api/apod-image?src=${encodeURIComponent(src)}`;
+
+/** Wikimedia Commons picture of the day, shaped like a NASA APOD response. Last resort. */
 async function fetchWikimediaPotd() {
     const today = new Date().toISOString().slice(0, 10).replaceAll('-', '/');
     const response = await fetch(`https://en.wikipedia.org/api/rest_v1/feed/featured/${today}`, {
-        headers: { 'User-Agent': 'TerminalSlideShow/1.0' },
+        headers: { 'User-Agent': 'TerminalSlideShow/1.0 (https://github.com/Muddyblack/Terminal-Slide-Show)' },
     });
     if (!response.ok) throw new Error(`Wikimedia responded with ${response.status}`);
     const { image } = await response.json();
@@ -258,66 +264,138 @@ async function fetchWikimediaPotd() {
     return {
         media_type: 'image',
         title: image.title.replace(/^File:/, '').replace(/\.\w+$/, '').replace(/_/g, ' '),
-        url: '/api/apod-image',
-        source_url: image.thumbnail.source,
+        url: imageProxyUrl(image.thumbnail.source),
         explanation: `${image.description?.text || 'Wikimedia Commons picture of the day.'}${artist}`,
+    };
+}
+
+/** Today's photo taken within ~30 km of the location, or null if there is none. */
+async function fetchRegionPhoto(location) {
+    const photo = pickDaily((await regionPhotosIfReady(location)) || []);
+    if (!photo) return null;
+    return {
+        media_type: 'image',
+        title: photo.title,
+        url: imageProxyUrl(photo.source_url),
+        explanation: photo.explanation,
     };
 }
 
 /**
  * @route GET /api/apod-image
- * @description Picture of the day served from our own origin (no hotlinking from the browser)
+ * @description Serves a Wikimedia picture from our own origin (no hotlinking from the browser)
  */
 app.get('/api/apod-image', async (req, res) => {
+    let src;
     try {
-        const apod = await cached('nasa-apod', 60 * 60 * 1000, fetchWikimediaPotd);
-        const src = apod.source_url || apod.url;
-        const image = await cached(`apod-image:${src}`, 60 * 60 * 1000, async () => {
-            const r = await fetch(src, { headers: { 'User-Agent': 'TerminalSlideShow/1.0' } });
+        src = new URL(String(req.query.src));
+    } catch {
+        return res.status(400).end();
+    }
+    if (src.protocol !== 'https:' || !/^(upload|thumb)\.wikimedia\.org$/.test(src.hostname)) {
+        return res.status(400).end();
+    }
+
+    try {
+        const image = await cached(`apod-image:${src.href}`, 24 * 60 * 60 * 1000, async () => {
+            const r = await fetch(src.href, { headers: { 'User-Agent': 'TerminalSlideShow/1.0 (https://github.com/Muddyblack/Terminal-Slide-Show)' } });
             if (!r.ok) throw new Error(`Image responded with ${r.status}`);
             return { type: r.headers.get('content-type') || 'image/jpeg', body: Buffer.from(await r.arrayBuffer()) };
         });
         res.set('Content-Type', image.type);
-        res.set('Cache-Control', 'public, max-age=3600');
+        res.set('Cache-Control', 'public, max-age=86400');
         res.send(image.body);
     } catch (error) {
-        logger.error('Failed to serve APOD image:', error);
+        logger.error('Failed to serve picture:', error);
         res.status(502).end();
     }
 });
 
 /**
+ * Test-page helpers (the /test page can pick the picture source). Only on when the server was started by
+ * `npm run dev`, which sets DEV_TOOLS=1. Terminal mode and Docker never set it.
+ */
+const devTools = process.env.DEV_TOOLS === '1';
+
+/** NASA's picture of the day when it is a real picture (checked hourly), otherwise null. */
+function fetchNasaApod() {
+    return cached('nasa-apod', 60 * 60 * 1000, async () => {
+        if (!config.apiKeys.NASA_API_KEY) return null;
+        try {
+            const nasaResponse = await fetch(
+                `https://api.nasa.gov/planetary/apod?api_key=${config.apiKeys.NASA_API_KEY}`
+            );
+            if (!nasaResponse.ok) throw new Error(`NASA responded with ${nasaResponse.status}`);
+            const apod = await nasaResponse.json();
+            // NASA sometimes serves its site logo instead of a picture
+            if (apod.media_type === 'image' && apod.url && !/nasa-logo/i.test(apod.url)) return apod;
+            logger.warn('NASA APOD returned a placeholder');
+        } catch (error) {
+            logger.warn('NASA APOD failed:', error.message);
+        }
+        return null;
+    });
+}
+
+/** Today's photo that fits the occasion of the day (Mauerfall, Halloween, ...), or null. */
+async function fetchOccasionPhoto(day) {
+    const occasion = getOccasion(day, { country: config.info.country, ...config.occasions });
+    if (!occasion) return null;
+    const photo = await occasionPhotoIfReady(occasion.id, day);
+    if (!photo) return null;
+    return {
+        media_type: 'image',
+        title: photo.title,
+        url: imageProxyUrl(photo.source_url),
+        explanation: photo.explanation,
+    };
+}
+
+/**
  * @route GET /api/nasa-apod
- * @description Fetch NASA Astronomy Picture of the Day
- * @throws {Error} If NASA API request fails
+ * @description Background picture. On an occasion (Mauerfall, Halloween, ...): a photo of that topic.
+ * Otherwise NASA's picture of the day when it is a real picture, otherwise today's photo from around
+ * the location (BACKGROUND_RADIUS_KM, default 50), otherwise Wikimedia's picture of the day.
+ * @param {string} [req.query.location] Place to look around, defaults to the configured location
+ * @param {string} [req.query.date] YYYY-MM-DD, previews another day's occasion
+ * @param {string} [req.query.source] Dev tools only: auto | occasion | nasa | region | potd
  */
 app.get('/api/nasa-apod', async (req, res) => {
-    logger.debug('Fetching NASA APOD');
-    try {
-        // The picture changes once a day; one upstream request per hour is plenty
-        const data = await cached('nasa-apod', 60 * 60 * 1000, async () => {
-            if (config.apiKeys.NASA_API_KEY) {
-                try {
-                    const nasaResponse = await fetch(
-                        `https://api.nasa.gov/planetary/apod?api_key=${config.apiKeys.NASA_API_KEY}`
-                    );
-                    if (!nasaResponse.ok) throw new Error(`NASA responded with ${nasaResponse.status}`);
-                    const apod = await nasaResponse.json();
-                    // NASA sometimes serves its site logo instead of a picture
-                    if (apod.media_type === 'image' && apod.url && !/nasa-logo/i.test(apod.url)) return apod;
-                    logger.warn('NASA APOD returned a placeholder, using Wikimedia picture of the day');
-                } catch (error) {
-                    logger.warn('NASA APOD failed, using Wikimedia picture of the day:', error.message);
-                }
-            }
-            return fetchWikimediaPotd();
-        });
+    const location = String(req.query.location || config.info.location);
+    const source = devTools ? String(req.query.source || 'auto') : 'auto';
+    logger.debug('Fetching background picture');
 
-        res.set('Cache-Control', 'public, max-age=3600');
+    try {
+        let data = null;
+        if (source === 'auto' || source === 'occasion') {
+            try {
+                data = await fetchOccasionPhoto(dayFromQuery(req.query));
+            } catch (error) {
+                logger.warn('Occasion photo search failed:', error.message);
+            }
+        }
+        if (!data && (source === 'auto' || source === 'nasa')) data = await fetchNasaApod();
+
+        if (!data && (source === 'auto' || source === 'region')) {
+            try {
+                data = await fetchRegionPhoto(location);
+            } catch (error) {
+                logger.warn('Regional photo search failed:', error.message);
+            }
+        }
+        // Wikimedia's picture of the day covers the time until the regional search is ready
+        if (!data && (source === 'auto' || source === 'potd')) {
+            data = await cached('wikimedia-potd', 60 * 60 * 1000, fetchWikimediaPotd);
+        }
+
+        if (!data) return res.status(503).json({ error: `No picture from source "${source}"` });
+
+        // Short cache so the regional photo shows up soon after the search finished
+        res.set('Cache-Control', 'public, max-age=60');
         res.json(data);
     } catch (error) {
-        logger.error('Failed to fetch NASA APOD:', error);
-        res.status(500).json({ error: 'Failed to fetch NASA image' });
+        logger.error('Failed to fetch background picture:', error);
+        res.status(500).json({ error: 'Failed to fetch background picture' });
     }
 });
 

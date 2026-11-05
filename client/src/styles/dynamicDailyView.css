@@ -4,7 +4,7 @@
 
 .daily-view {
   --gold: #e3dc9c;
-  --soft: rgba(255, 255, 255, 0.72);
+  --soft: rgba(255, 255, 255, 0.9);
   --glass: rgba(255, 255, 255, 0.07);
   --glass-line: rgba(255, 255, 255, 0.14);
   position: fixed;
@@ -19,7 +19,7 @@
 }
 
 .daily-view.day {
-  --soft: rgba(255, 255, 255, 0.82);
+  --soft: rgba(255, 255, 255, 0.92);
   --glass: rgba(255, 255, 255, 0.12);
   --glass-line: rgba(255, 255, 255, 0.22);
   background: linear-gradient(160deg, #22407a 0%, #6a5a8e 55%, #d89a5c 100%);
@@ -45,12 +45,18 @@
   transition: background 0.5s ease;
 }
 
+/* extra scrims behind the clock (left) and the reading column (bottom right), so text stays readable on any picture */
+.background-overlay {
+  --scrim: radial-gradient(ellipse 60% 55% at 22% 58%, rgba(8, 12, 24, 0.5), transparent 70%),
+    radial-gradient(ellipse 55% 45% at 78% 74%, rgba(8, 12, 24, 0.5), transparent 70%);
+}
+
 .background-overlay.night {
-  background: linear-gradient(160deg, rgba(10, 16, 32, 0.6), rgba(20, 32, 61, 0.5), rgba(29, 44, 82, 0.45));
+  background: var(--scrim), linear-gradient(160deg, rgba(10, 16, 32, 0.6), rgba(20, 32, 61, 0.5), rgba(29, 44, 82, 0.45));
 }
 
 .background-overlay.day {
-  background: linear-gradient(160deg, rgba(34, 64, 122, 0.55), rgba(106, 90, 142, 0.45), rgba(216, 154, 92, 0.35));
+  background: var(--scrim), linear-gradient(160deg, rgba(34, 64, 122, 0.55), rgba(106, 90, 142, 0.45), rgba(216, 154, 92, 0.35));
 }
 
 .background-effects {
@@ -66,6 +72,7 @@
 }
 
 .content-wrapper {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6), 0 2px 20px rgba(0, 0, 0, 0.4);
   position: relative;
   z-index: 10;
   height: 100%;
@@ -182,6 +189,8 @@
   width: 14vw;
   height: auto;
   display: block;
+  /* the sparkle trail and the bobbing antlers reach past the drawing box */
+  overflow: visible;
 }
 
 .flyer-shout {
@@ -254,6 +263,7 @@
   display: grid;
   gap: 0.8vw;
   padding-left: 1vw;
+  margin-bottom: 5vw;
 }
 
 .greeting-text {
@@ -297,7 +307,7 @@
 .reading-column {
   /* sits below the weather card (top right) and above the logo */
   align-self: end;
-  margin-bottom: 7vw;
+  margin-bottom: 10vw;
   display: grid;
   gap: 1.6vw;
   border-left: 1px solid var(--glass-line);
@@ -365,9 +375,9 @@
 }
 
 .fact-block {
-  font-size: clamp(0.85rem, 1.05vw, 2.1rem);
+  font-size: clamp(0.9rem, 1.15vw, 2.3rem);
   line-height: 1.5;
-  color: var(--soft);
+  color: #fff;
 }
 
 .fact-kicker {
@@ -383,9 +393,9 @@
 /* logo: bottom right, on a frosted chip so it stays readable on any picture */
 .brand-logo {
   position: absolute;
-  right: 2vw;
-  bottom: 2vw;
-  height: clamp(34px, 3.4vw, 76px);
+  right: 1.4vw;
+  bottom: 1.4vw;
+  height: clamp(36px, 3.8vw, 84px);
   width: auto;
   box-sizing: content-box;
   padding: 0.5vw 0.9vw;
@@ -399,79 +409,64 @@
   pointer-events: none;
 }
 
-/* NASA info drawer */
-.nasa-info {
-  position: fixed;
-  top: 50%;
-  left: 0;
-  transform: translateY(-50%) translateX(-90%);
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  padding: clamp(1rem, 1vw, 2rem) clamp(1.5rem, 1.5vw, 3rem);
-  border-radius: 0 1rem 1rem 0;
-  max-width: clamp(340px, 25vw, 600px);
-  max-height: 80vh;
+/* photo credit: bottom left, same glass as the logo chip; click (or the timer) shows the description */
+.photo-credit {
+  position: absolute;
+  left: 1.4vw;
+  bottom: 1.4vw;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7vw;
+  max-width: min(34vw, 620px);
+  padding: 0.6vw 1vw;
+  border-radius: 1.2vw;
+  background: var(--background-image-weather-gradient);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
   cursor: pointer;
-  transition: all 0.3s ease;
   z-index: 20;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
-.nasa-info.expanded {
-  transform: translateY(-50%) translateX(0);
+.photo-credit-icon {
+  flex: none;
+  width: clamp(14px, 1.2vw, 28px);
+  height: clamp(14px, 1.2vw, 28px);
+  margin-top: 0.15vw;
+  color: var(--gold);
 }
 
-.nasa-info:hover {
-  transform: translateY(-50%) translateX(-10%);
+.photo-credit-text {
+  min-width: 0;
 }
 
-.nasa-info.expanded:hover {
-  transform: translateY(-50%) translateX(0);
-}
-
-.nasa-info .flex {
-  display: flex;
-}
-
-.nasa-info .items-center {
-  align-items: center;
-}
-
-.nasa-info .justify-between {
-  justify-content: space-between;
-}
-
-.nasa-info .gap-2 {
-  gap: clamp(0.5rem, 0.5vw, 1rem);
-}
-
-.nasa-title {
-  font-size: clamp(1rem, 1vw, 2rem);
-  font-weight: 500;
-  color: #fff;
-  margin-bottom: clamp(0.5rem, 0.5vw, 1rem);
+.photo-credit-title,
+.photo-credit-by {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.nasa-description {
-  font-size: clamp(0.875rem, 0.875vw, 1.75rem);
-  color: rgba(255, 255, 255, 0.8);
-  line-height: 1.4;
-  overflow-y: auto;
-  max-height: 0;
-  transition: max-height 0.3s ease;
+.photo-credit-title {
+  font-size: clamp(0.8rem, 1vw, 2rem);
+  font-weight: 500;
+  color: #fff;
 }
 
-.nasa-description.expanded {
-  max-height: calc(70vh - 4rem);
-  margin-top: clamp(0.5rem, 0.5vw, 1rem);
-  padding-right: clamp(0.5rem, 0.5vw, 1rem);
+.photo-credit-by {
+  font-size: clamp(0.7rem, 0.82vw, 1.6rem);
+  color: var(--soft);
+}
+
+.photo-credit-description {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 0.4vw;
+  font-size: clamp(0.7rem, 0.82vw, 1.6rem);
+  line-height: 1.4;
+  color: var(--soft);
 }
 
 
@@ -532,19 +527,13 @@
     border-radius: 10px;
   }
 
-  .nasa-info {
-    top: auto;
-    bottom: 1rem;
+  .photo-credit {
     left: 1rem;
-    transform: none;
-    max-width: calc(100% - 9rem);
-    border-radius: 1rem;
-  }
-
-  .nasa-info.expanded,
-  .nasa-info:hover,
-  .nasa-info.expanded:hover {
-    transform: none;
+    bottom: 1rem;
+    max-width: calc(100% - 11rem);
+    padding: 6px 10px;
+    border-radius: 10px;
+    gap: 8px;
   }
 }
 

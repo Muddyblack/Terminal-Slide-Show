@@ -1,11 +1,12 @@
 import { frontendConfig } from '@config/frontend.config';
-import { MapPin, Info } from 'lucide-react';
+import { MapPin, Camera } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 import '@/styles/dynamicDailyView.css';
 import BrandLogo from '@/components/brandLogo';
 import AnimatedWeather from '@/components/dynamic_daily_view/animatedWeather';
 import { FLYERS, PARTICLES } from '@/components/dynamic_daily_view/flyers';
+import { DebugOptions, applyWeatherDebug } from '@/components/dynamic_daily_view/debugOptions';
 import { QuoteType, WeatherType, NasaImageType, GreetingsType, OccasionType, ContentType } from '@/components/dynamic_daily_view/types';
 import { useServerStatus } from '@/contexts/ServerStatusContext';
 
@@ -17,8 +18,17 @@ const SNOW_THEMES = ['christmas', 'winter'];
 
 type SetterFunction = (value: any) => void;
 
-const DynamicDailyView = () => {
-  const [time, setTime] = useState(new Date());
+interface DynamicDailyViewProps {
+  /** Only the /test page passes this */
+  debug?: DebugOptions;
+}
+
+const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
+  const [clock, setClock] = useState(new Date());
+  const time = debug?.fakeNow ? new Date(debug.fakeNow) : clock;
+  const location = debug?.location || frontendConfig.info.location;
+  const sourceParam = debug && debug.source !== 'auto' ? debug.source : '';
+  const occasionDate = debug?.fakeNow ? debug.fakeNow.slice(0, 10) : '';
   const [quote, setQuote] = useState<QuoteType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error] = useState<string | null>(null);
@@ -26,14 +36,16 @@ const DynamicDailyView = () => {
   const [content, setContent] = useState<ContentType | null>(null);
   const [step, setStep] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
-  const [weather, setWeather] = useState<WeatherType | null>(null);
+  const [liveWeather, setWeather] = useState<WeatherType | null>(null);
   const [nasaImage, setNasaImage] = useState<NasaImageType | null>(null);
   const [showNasaInfo, setShowNasaInfo] = useState(false);
   const [greetings, setGreetings] = useState<GreetingsType>({});
   const [occasion, setOccasion] = useState<OccasionType | null>(null);
-  const isServerConnected = useServerStatus();
+  const serverConnected = useServerStatus();
+  const isServerConnected = debug?.offline ? false : serverConnected;
   const [isImageLoading, setIsImageLoading] = useState(true);
 
+  const weather = applyWeatherDebug(liveWeather, debug, time.getHours());
   const isNight = weather ? !weather.is_day : (time.getHours() >= 18 || time.getHours() < 6); // fallback to time-based check if weather data isn't available
 
   const loadFromCache = (key: string) => {
@@ -95,8 +107,8 @@ const DynamicDailyView = () => {
   const fetchQuotes = () => fetchWithCache('/api/quotes', 'quotes', setQuote);
   const fetchContent = () =>
     fetchWithCache(
-      `/api/content?location=${encodeURIComponent(frontendConfig.info.location)}`,
-      'content',
+      `/api/content?location=${encodeURIComponent(location)}`,
+      `content:${location}`,
       (data: ContentType) => {
         if (data?.items?.length) setContent(data);
       }
@@ -105,19 +117,27 @@ const DynamicDailyView = () => {
   const fetchGreetings = () => fetchWithCache('/api/greetings', 'greetings', setGreetings);
   const fetchOccasion = () => {
     // ?date=YYYY-MM-DD previews another day, e.g. /dynamic-view?date=2026-12-24
-    const date = new window.URLSearchParams(window.location.search).get('date');
-    fetchWithCache(`/api/occasion${date ? `?date=${encodeURIComponent(date)}` : ''}`, 'occasion', setOccasion);
+    const date = occasionDate || new window.URLSearchParams(window.location.search).get('date');
+    fetchWithCache(`/api/occasion${date ? `?date=${encodeURIComponent(date)}` : ''}`, `occasion:${date ?? ''}`, setOccasion);
   };
   // Ignore the NASA logo placeholder, e.g. from an older cached response
-  const fetchNasaImage = () =>
-    fetchWithCache('/api/nasa-apod', 'nasa', (data: NasaImageType) => {
+  const fetchNasaImage = async () => {
+    if (debug?.source === 'none') {
+      setNasaImage(null);
+      return;
+    }
+    // The picture follows the occasion of the day, so the preview date goes along
+    const date = occasionDate || new window.URLSearchParams(window.location.search).get('date') || '';
+    const query = `location=${encodeURIComponent(location)}${sourceParam ? `&source=${sourceParam}` : ''}${date ? `&date=${encodeURIComponent(date)}` : ''}`;
+    await fetchWithCache(`/api/nasa-apod?${query}`, `nasa:${location}:${sourceParam}:${date}`, (data: NasaImageType) => {
       if (data?.url && !/nasa-logo/i.test(data.url)) setNasaImage(data);
     });
+  };
 
   const fetchWeather = () => {
     fetchWithCache(
-      `/api/weather?location=${encodeURIComponent(frontendConfig.info.location)}`,
-      'weather',
+      `/api/weather?location=${encodeURIComponent(location)}`,
+      `weather:${location}`,
       (data) => setWeather(data.current_weather)
     );
   };
@@ -154,8 +174,14 @@ const DynamicDailyView = () => {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setTime(new Date());
+      setClock(new Date());
     }, 1000);
+
+    // The test page changes places and sources: drop what is shown for the old ones
+    if (debug) {
+      setNasaImage(null);
+      setIsImageLoading(true);
+    }
 
     // Initial data load
     safeDataFetch();
@@ -170,19 +196,13 @@ const DynamicDailyView = () => {
     // Rotate facts, quotes and greetings so the screen does not show the same text all day
     const rotateTimer = setInterval(() => setStep((prev) => prev + 1), ROTATE_MS);
 
-    // NASA info auto-toggle timer
-    const nasaInfoTimer = setInterval(() => {
-      setShowNasaInfo(prev => !prev);
-    }, 60000);
-
     // Cleanup
     return () => {
       clearInterval(timer);
       clearInterval(contentTimer);
-      clearInterval(nasaInfoTimer);
       clearInterval(rotateTimer);
     };
-  }, [isServerConnected]);  // Re-run when connection status changes
+  }, [isServerConnected, location, sourceParam, occasionDate, debug?.reloadKey]);  // Re-run when connection status or the test options change
 
   useEffect(() => {
     if (nasaImage?.url) {
@@ -194,6 +214,11 @@ const DynamicDailyView = () => {
       img.src = nasaImage.url;
     }
   }, [nasaImage?.url]);
+
+  // "Description · Foto: Name (License)" -> description and credit shown separately
+  const creditMatch = nasaImage?.explanation.match(/\s*·?\s*((?:Foto|Photo): .*)$/);
+  const photoCredit = creditMatch?.[1] ?? '';
+  const photoDescription = (creditMatch ? nasaImage?.explanation.slice(0, creditMatch.index) : nasaImage?.explanation) ?? '';
 
   const item = content ? content.items[step % content.items.length] : null;
   const shownQuote = content?.quotes.length ? content.quotes[step % content.quotes.length] : quote;
@@ -260,7 +285,7 @@ const DynamicDailyView = () => {
         <div className="top-bar">
           <div className="location-badge">
             <MapPin />
-            <span>{frontendConfig.info.location}</span>
+            <span>{location}</span>
           </div>
           {!isServerConnected && (
             <span
@@ -331,17 +356,15 @@ const DynamicDailyView = () => {
         <BrandLogo variant="wide" className="brand-logo" />
 
         {nasaImage && (
-          <div
-            className={`nasa-info ${showNasaInfo ? 'expanded' : ''}`}
-            onClick={() => setShowNasaInfo(!showNasaInfo)}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="nasa-title">{nasaImage.title}</h3>
-              <Info className="w-5 h-5 text-blue-300" />
+          <div className="photo-credit" onClick={() => setShowNasaInfo(!showNasaInfo)}>
+            <Camera className="photo-credit-icon" />
+            <div className="photo-credit-text">
+              <div className="photo-credit-title">{nasaImage.title}</div>
+              {photoCredit && <div className="photo-credit-by">{photoCredit}</div>}
+              {showNasaInfo && photoDescription && (
+                <p className="photo-credit-description">{photoDescription}</p>
+              )}
             </div>
-            <p className={`nasa-description ${showNasaInfo ? 'expanded' : ''}`}>
-              {nasaImage.explanation}
-            </p>
           </div>
         )}
       </div>

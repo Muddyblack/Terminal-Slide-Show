@@ -1,0 +1,367 @@
+/* /test page: stage that shrinks next to a side panel, development only */
+
+.test-stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: radial-gradient(120% 120% at 50% 0%, #121a30 0%, #070a14 70%);
+}
+
+/* The view lives in here; a transformed parent is the containing block of the view's fixed layout */
+.test-view {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 0;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), border-radius 0.4s ease, box-shadow 0.4s ease;
+}
+
+.test-view.open {
+  border-radius: 18px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* Drawer */
+.test-drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  z-index: 1000;
+  font: 13px/1.45 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: #e9edf7;
+  text-shadow: none;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.test-drawer.left {
+  left: 0;
+  transform: translateX(-100%);
+}
+
+.test-drawer.right {
+  right: 0;
+  transform: translateX(100%);
+}
+
+.test-drawer.open {
+  transform: translateX(0);
+}
+
+/* The tab that stays at the edge while the panel is closed */
+.test-handle {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(14, 20, 38, 0.82);
+  backdrop-filter: blur(12px);
+  color: #e9edf7;
+  font: inherit;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  writing-mode: vertical-rl;
+  transform: translateY(-50%);
+  transition: background 0.2s ease;
+}
+
+.test-drawer.left .test-handle {
+  left: 100%;
+  border-left: 0;
+  border-radius: 0 12px 12px 0;
+}
+
+.test-drawer.right .test-handle {
+  right: 100%;
+  border-right: 0;
+  border-radius: 12px 0 0 12px;
+  writing-mode: vertical-lr;
+}
+
+.test-handle:hover {
+  background: rgba(36, 48, 88, 0.92);
+}
+
+.test-panel {
+  box-sizing: border-box;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 18px 16px 28px;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  background: linear-gradient(180deg, rgba(18, 26, 48, 0.97), rgba(9, 13, 26, 0.98));
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.test-drawer.left .test-panel {
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.test-drawer.right .test-panel {
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.test-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 2px 6px;
+}
+
+.test-panel h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.test-panel header p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #8e99b5;
+}
+
+/* Cards */
+.card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.card h3 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8e99b5;
+}
+
+.hint {
+  margin: 0;
+  font-size: 12px;
+  color: #8e99b5;
+}
+
+/* Buttons and inputs */
+.test-panel button,
+.test-panel input:not([type='checkbox']):not([type='range']) {
+  font: inherit;
+  color: inherit;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chips button,
+.ghost,
+.field button,
+.icon {
+  padding: 6px 11px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.chips button:hover,
+.ghost:hover,
+.field button:hover,
+.icon:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.chips button.on {
+  background: #e3dc9c;
+  border-color: #e3dc9c;
+  color: #141b30;
+  font-weight: 600;
+}
+
+.ghost {
+  justify-self: start;
+  color: #b7c0d8;
+}
+
+.icon {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  font-size: 15px;
+}
+
+.test-panel :focus-visible {
+  outline: 2px solid #e3dc9c;
+  outline-offset: 2px;
+}
+
+/* Segmented control */
+.segmented {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.segmented button {
+  padding: 7px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #b7c0d8;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.segmented button.on {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Picture source list */
+.choices {
+  display: grid;
+  gap: 6px;
+}
+
+.choices button {
+  display: grid;
+  gap: 1px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.choices button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.choices button.on {
+  border-color: #e3dc9c;
+  background: rgba(227, 220, 156, 0.12);
+}
+
+.choices small {
+  font-size: 11.5px;
+  color: #8e99b5;
+}
+
+/* Switch */
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle i {
+  position: relative;
+  flex: none;
+  width: 38px;
+  height: 22px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.18);
+  transition: background 0.2s ease;
+}
+
+.toggle i::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s ease;
+}
+
+.toggle input:checked + i {
+  background: #e3dc9c;
+}
+
+.toggle input:checked + i::after {
+  transform: translateX(16px);
+  background: #141b30;
+}
+
+.toggle input:focus-visible + i {
+  outline: 2px solid #e3dc9c;
+  outline-offset: 2px;
+}
+
+/* Time */
+.time-readout {
+  font: 600 28px/1 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  letter-spacing: -0.02em;
+  color: #e3dc9c;
+}
+
+.test-panel input[type='range'] {
+  width: 100%;
+  accent-color: #e3dc9c;
+}
+
+.test-panel input[type='date'],
+.field input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 7px 11px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.28);
+  color-scheme: dark;
+}
+
+.field {
+  display: flex;
+  gap: 6px;
+}
+
+.reset {
+  justify-self: start;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 120, 120, 0.35);
+  background: rgba(255, 120, 120, 0.1);
+  color: #ffb4b4;
+  cursor: pointer;
+}
+
+.reset:hover {
+  background: rgba(255, 120, 120, 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .test-view,
+  .test-drawer {
+    transition: none;
+  }
+}

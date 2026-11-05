@@ -47,28 +47,28 @@ const SleighBody = () => (
       <path d="M20 58 C20 80 32 90 54 90 L216 90 C244 90 262 74 260 42 C250 58 234 64 214 64 L24 64 Z" />
       {/* sack of presents */}
       <path d="M44 62 C30 40 40 14 72 12 C104 10 118 38 108 62 Z" />
-      <path d="M62 16 C66 8 78 8 84 14 L80 22 L66 22 Z" />
-      {/* Santa */}
+      <path d="M60 18 C64 6 80 6 86 16 L82 24 L64 24 Z" />
+      {/* Santa: coat, face, beard, hat with fur brim and pompom */}
       <path d="M130 64 C126 44 138 30 156 30 C176 30 188 42 186 64 Z" />
-      <circle cx="160" cy="18" r="11" />
-      <path d="M150 24 C150 36 170 36 170 24 Z" />
-      <path d="M149 14 C148 -2 164 -8 178 0 L166 14 Z" />
-      <circle cx="181" cy="0" r="4.4" />
+      <circle cx="158" cy="20" r="10" />
+      <path d="M148 21 C148 36 156 41 161 41 C167 41 170 34 169 21 C163 26 154 26 148 21 Z" />
+      <path d="M147 12 C146 -4 160 -10 177 -2 L168 12 Z" />
+      <rect x="145" y="10" width="26" height="6" rx="3" />
+      <circle cx="178" cy="-3" r="4.6" />
       <path d="M184 44 L200 40 L202 46 L184 52 Z" />
     </g>
     {/* details cut into the silhouette */}
     <g fill={SHADE} opacity=".55">
-      <rect x="150" y="12" width="20" height="6" rx="3" />
-      <rect x="128" y="62" width="60" height="3" />
+      <rect x="130" y="54" width="56" height="3" />
       <path d="M44 62 L108 62 L108 65 L44 65 Z" />
-      <circle cx="66" cy="38" r="2.4" />
-      <circle cx="86" cy="30" r="2.4" />
+      <path d="M62 24 L84 24 L84 27 L62 27 Z" />
+      <path d="M146 17.5 L171 17.5" stroke={SHADE} strokeWidth="1.6" />
     </g>
   </g>
 );
 
 const Santa = () => (
-  <svg viewBox="0 0 700 130" className="flyer-art" aria-hidden="true">
+  <svg viewBox="0 -24 700 154" className="flyer-art" aria-hidden="true">
     {/* sparkle trail behind the sleigh */}
     <g fill="currentColor">
       {Array.from({ length: 9 }, (_, i) => (
