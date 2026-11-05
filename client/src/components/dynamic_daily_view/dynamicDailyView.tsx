@@ -1,30 +1,66 @@
 import { frontendConfig } from '@config/frontend.config';
-import { Calendar, Quote, Coffee, MapPin, Clock, Info } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { MapPin, Camera } from 'lucide-react';
+import { useState, useEffect, type CSSProperties } from 'react';
 
 import '@/styles/dynamicDailyView.css';
+import BrandLogo from '@/components/brandLogo';
+import OccasionArt from '@/components/dynamic_daily_view/occasionArt';
 import AnimatedWeather from '@/components/dynamic_daily_view/animatedWeather';
-import { QuoteType, WeatherType, NasaImageType, GreetingsType } from '@/components/dynamic_daily_view/types';
+import OccasionScene from '@/components/dynamic_daily_view/flyers';
+import { describeWeather } from '@/components/dynamic_daily_view/weatherModel';
+import WeatherScene from '@/components/dynamic_daily_view/weatherScene';
+import { DebugOptions, applyWeatherDebug } from '@/components/dynamic_daily_view/debugOptions';
+import { QuoteType, WeatherType, NasaImageType, GreetingsType, OccasionType, ContentType } from '@/components/dynamic_daily_view/types';
 import { useServerStatus } from '@/contexts/ServerStatusContext';
 
 
+/** How long each text stays on screen */
+const ROTATE_MS = 25000;
+
 type SetterFunction = (value: any) => void;
 
-const DynamicDailyView = () => {
-  const [time, setTime] = useState(new Date());
+interface DynamicDailyViewProps {
+  /** Only the /test page passes this */
+  debug?: DebugOptions;
+}
+
+const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
+  const [clock, setClock] = useState(new Date());
+  const time = debug?.fakeNow ? new Date(debug.fakeNow) : clock;
+  const location = debug?.location || frontendConfig.info.location;
+  const sourceParam = debug && debug.source !== 'auto' ? debug.source : '';
+  const occasionDate = debug?.fakeNow ? debug.fakeNow.slice(0, 10) : '';
   const [quote, setQuote] = useState<QuoteType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error] = useState<string | null>(null);
   const [fact, setFact] = useState<string | null>(null);
+  const [content, setContent] = useState<ContentType | null>(null);
+  const [step, setStep] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
-  const [weather, setWeather] = useState<WeatherType | null>(null);
+  const [liveWeather, setWeather] = useState<WeatherType | null>(null);
   const [nasaImage, setNasaImage] = useState<NasaImageType | null>(null);
   const [showNasaInfo, setShowNasaInfo] = useState(false);
   const [greetings, setGreetings] = useState<GreetingsType>({});
-  const isServerConnected = useServerStatus();
-  const [logoSrc, setLogoSrc] = useState('/slideshow.png');
-  const [isImageLoading, setIsImageLoading] = useState(true);
+  const [occasion, setOccasion] = useState<OccasionType | null>(null);
+  // Look picked with THEME in the server's .env; "default" sends no variables and keeps the stylesheet look
+  const [skin, setSkin] = useState<{ id: string; vars: Record<string, string> } | null>(null);
+  const serverConnected = useServerStatus();
+  const isServerConnected = debug?.offline ? false : serverConnected;
+  const [displayedImage, setDisplayedImage] = useState<NasaImageType | null>(null);
+  const [previousImage, setPreviousImage] = useState<NasaImageType | null>(null);
 
+  const weather = applyWeatherDebug(liveWeather, debug, time.getHours());
+  const weatherState = weather ? describeWeather({
+    code: weather.weathercode,
+    rain: weather.rain,
+    showers: weather.showers,
+    snowfall: weather.snowfall,
+    windspeed: weather.windspeed,
+    winddirection: weather.winddirection,
+    gusts: weather.wind_gusts,
+  }) : null;
+  // While it rains, snows or is foggy, the weather is the show: occasions keep only their flyby
+  const weatherBusy = Boolean(weatherState && (weatherState.precip !== 'none' || weatherState.kind === 'fog'));
   const isNight = weather ? !weather.is_day : (time.getHours() >= 18 || time.getHours() < 6); // fallback to time-based check if weather data isn't available
 
   const loadFromCache = (key: string) => {
@@ -55,35 +91,6 @@ const DynamicDailyView = () => {
     }
   };
 
-  const cacheLogo = async () => {
-    try {
-      // Check cache first
-      const cachedLogo = loadFromCache('logo');
-      if (cachedLogo) {
-        return cachedLogo;
-      }
-
-      // Fetch and convert to base64 if not cached
-      const response = await fetch('/slideshow.png');
-      const blob = await response.blob();
-
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64Logo = reader.result;
-          // Save to cache
-          saveToCache('logo', base64Logo);
-          resolve(base64Logo);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch (err) {
-      console.warn('Failed to cache logo:', err);
-      return '/slideshow.png'; // Fallback to normal path
-    }
-  };
-
   const fetchWithCache = async (endpoint: string, cacheKey: string, setter: SetterFunction) => {
     console.debug('Fetch attempt - Server status:', isServerConnected);
     try {
@@ -104,7 +111,7 @@ const DynamicDailyView = () => {
       setter(data);
       saveToCache(cacheKey, data);
     } catch (err) {
-      console.warn(`Failed to fetch ${cacheKey}:`, err);
+      console.warn('Failed to fetch %s:', cacheKey, err);
       const cachedData = loadFromCache(cacheKey);
       if (cachedData) {
         setter(cachedData);
@@ -113,14 +120,42 @@ const DynamicDailyView = () => {
   };
 
   const fetchQuotes = () => fetchWithCache('/api/quotes', 'quotes', setQuote);
+  const fetchContent = () =>
+    fetchWithCache(
+      `/api/content?location=${encodeURIComponent(location)}`,
+      `content:${location}`,
+      (data: ContentType) => {
+        if (data?.items?.length) setContent(data);
+      }
+    );
   const fetchFacts = () => fetchWithCache('/api/facts', 'facts', setFact);
   const fetchGreetings = () => fetchWithCache('/api/greetings', 'greetings', setGreetings);
-  const fetchNasaImage = () => fetchWithCache('/api/nasa-apod', 'nasa', setNasaImage);
+  const fetchSkin = () => fetchWithCache('/api/theme', 'theme', setSkin);
+  const fetchOccasion = () => {
+    // ?date=YYYY-MM-DD previews another day, e.g. /dynamic-view?date=2026-12-24
+    const date = occasionDate || new window.URLSearchParams(window.location.search).get('date');
+    fetchWithCache(`/api/occasion${date ? `?date=${encodeURIComponent(date)}` : ''}`, `occasion:${date ?? ''}`, setOccasion);
+  };
+  // Ignore the NASA logo placeholder, e.g. from an older cached response
+  const fetchNasaImage = async () => {
+    if (debug?.source === 'none') {
+      setNasaImage(null);
+      setDisplayedImage(null);
+      setPreviousImage(null);
+      return;
+    }
+    // The picture follows the occasion of the day, so the preview date goes along
+    const date = occasionDate || new window.URLSearchParams(window.location.search).get('date') || '';
+    const query = `location=${encodeURIComponent(location)}${sourceParam ? `&source=${sourceParam}` : ''}${date ? `&date=${encodeURIComponent(date)}` : ''}`;
+    await fetchWithCache(`/api/nasa-apod?${query}`, `nasa:${location}:${sourceParam}:${date}`, (data: NasaImageType) => {
+      if (data?.url && !/nasa-logo/i.test(data.url)) setNasaImage(data);
+    });
+  };
 
   const fetchWeather = () => {
     fetchWithCache(
-      `/api/weather?location=${encodeURIComponent(frontendConfig.info.location)}`,
-      'weather',
+      `/api/weather?location=${encodeURIComponent(location)}`,
+      `weather:${location}`,
       (data) => setWeather(data.current_weather)
     );
   };
@@ -129,7 +164,8 @@ const DynamicDailyView = () => {
     for (const range in greetings) {
       const [start, end] = range.split('-').map(Number);
       if (hour >= start && hour < end) {
-        return greetings[range];
+        const options = greetings[range];
+        return Array.isArray(options) ? options[step % options.length] : options;
       }
     }
     return 'Nachtschicht oder Feierabend? 🌙';
@@ -142,8 +178,11 @@ const DynamicDailyView = () => {
         fetchQuotes(),
         fetchWeather(),
         fetchFacts(),
+        fetchContent(),
         fetchNasaImage(),
-        fetchGreetings()
+        fetchGreetings(),
+        fetchOccasion(),
+        fetchSkin()
       ]);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -154,8 +193,15 @@ const DynamicDailyView = () => {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setTime(new Date());
+      setClock(new Date());
     }, 1000);
+
+    // The test page changes places and sources: drop what is shown for the old ones
+    if (debug) {
+      setNasaImage(null);
+      setDisplayedImage(null);
+      setPreviousImage(null);
+    }
 
     // Initial data load
     safeDataFetch();
@@ -167,31 +213,44 @@ const DynamicDailyView = () => {
       }
     }, 600000); // 10 minutes
 
-    // NASA info auto-toggle timer
-    const nasaInfoTimer = setInterval(() => {
-      setShowNasaInfo(prev => !prev);
-    }, 60000);
+    // Rotate facts, quotes and greetings so the screen does not show the same text all day
+    const rotateTimer = setInterval(() => setStep((prev) => prev + 1), ROTATE_MS);
 
-    // Cache logo
-    cacheLogo().then(setLogoSrc);
+    const photoTimer = setInterval(() => {
+      if (isServerConnected) fetchNasaImage();
+    }, 60000);
 
     // Cleanup
     return () => {
       clearInterval(timer);
+      clearInterval(photoTimer);
       clearInterval(contentTimer);
-      clearInterval(nasaInfoTimer);
+      clearInterval(rotateTimer);
     };
-  }, [isServerConnected]);  // Re-run when connection status changes
+  }, [isServerConnected, location, sourceParam, occasionDate, debug?.reloadKey]);  // Re-run when connection status or the test options change
 
   useEffect(() => {
-    if (nasaImage?.url) {
-      const img = new Image();
-      img.onload = () => {
-        setIsImageLoading(false);
-      };
-      img.src = nasaImage.url;
-    }
-  }, [nasaImage?.url]);
+    if (!nasaImage?.url || displayedImage?.url === nasaImage.url) return;
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) return;
+      if (displayedImage?.url === nasaImage.url) return;
+      setPreviousImage(displayedImage);
+      setDisplayedImage(nasaImage);
+    };
+    img.onerror = () => console.warn('Background image failed to load:', nasaImage.url);
+    img.src = nasaImage.url;
+    return () => { cancelled = true; };
+  }, [nasaImage, displayedImage]);
+
+  // "Description · Foto: Name (License)" -> description and credit shown separately
+  const creditMatch = displayedImage?.explanation.match(/\s*·?\s*((?:Foto|Photo): .*)$/);
+  const photoCredit = creditMatch?.[1] ?? '';
+  const photoDescription = (creditMatch ? displayedImage?.explanation.slice(0, creditMatch.index) : displayedImage?.explanation) ?? '';
+
+  const item = content ? content.items[step % content.items.length] : null;
+  const shownQuote = content?.quotes.length ? content.quotes[step % content.quotes.length] : quote;
 
   const formattedDate = time.toLocaleDateString('de-DE', {
     weekday: 'long',
@@ -200,21 +259,29 @@ const DynamicDailyView = () => {
     day: 'numeric'
   });
 
-  const formattedTime = time.toLocaleTimeString('de-DE', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  });
+  // With ?date= the occasion is another day's: count down from that day, at the current time
+  const previewDay = occasionDate || new window.URLSearchParams(window.location.search).get('date');
+  const occasionNow = previewDay && /^\d{4}-\d{2}-\d{2}$/.test(previewDay)
+    ? new Date(`${previewDay}T${time.toTimeString().slice(0, 8)}`)
+    : time;
+
+  const hours = String(time.getHours()).padStart(2, '0');
+  const minutes = String(time.getMinutes()).padStart(2, '0');
 
   return (
-    <div className={`daily-view ${isNight ? 'night' : 'day'}`}>
-      {nasaImage && !isImageLoading && (
+    <div
+      className={`daily-view ${isNight ? 'night' : 'day'}${occasion ? ` theme-${occasion.theme}` : ''}`}
+      data-skin={skin && Object.keys(skin.vars).length ? skin.id : undefined}
+      style={skin?.vars as CSSProperties | undefined}
+    >
+      {displayedImage && (
         <>
+          {previousImage && <div key={`previous-${previousImage.url}`} className={`nasa-background photo-exit ${isNight ? 'night' : 'day'}`} style={{ backgroundImage: `url(${previousImage.url})` }} />}
           <div
-            className={`nasa-background ${isNight ? 'night' : 'day'}`}
-            style={{ 
-              backgroundImage: `url(${nasaImage.url})`
-            }}
+            key={displayedImage.url}
+            onAnimationEnd={() => setPreviousImage(null)}
+            className={`nasa-background photo-enter ${isNight ? 'night' : 'day'}`}
+            style={{ backgroundImage: `url(${displayedImage.url})` }}
           />
           <div className={`background-overlay ${isNight ? 'night' : 'day'}`} />
         </>
@@ -226,88 +293,93 @@ const DynamicDailyView = () => {
         <div className="shooting-star delay-2"></div>
       </div>
 
+      {weatherState && <WeatherScene state={weatherState} night={isNight} />}
+
+      {occasion && <OccasionScene occasion={occasion} quiet={weatherBusy} />}
+
       <div className="content-wrapper">
-        <div className="dhbw-logo">
-          <img src={logoSrc} alt="DHBW Logo" />
-        </div>
-
-        {!isServerConnected && (
-          <div className="offline-badge">
-            <span className="text-yellow-300">⚠️ Offline Mode - Using Cached Data</span>
+        <div className="top-bar">
+          <div className="location-badge">
+            <MapPin />
+            <span>{location}</span>
           </div>
-        )}
-
-        <div className="location-badge">
-          <MapPin className="text-blue-300" />
-          <span>{frontendConfig.info.location}</span>
-        </div>
-
-        <div className="main-content">
-          <h1 className="greeting-text">{getGreetings(time.getHours())}</h1>
-
-          <div className="datetime-display">
-            <div className="date">
-              <Calendar className="text-blue-300 select-none" />
-              <span className="select-text">{formattedDate}</span>
-            </div>
-            <div className="time">
-              <Clock className="text-blue-300 select-none" />
-              <span className="select-text">{formattedTime}</span>
-            </div>
-          </div>
-
-          <div className="quote-card" onClick={() => setShowTranslation(!showTranslation)}>
-            <Quote className="text-yellow-300" />
-            {isLoading ? (
-              <p className="quote-text">Lädt Zitat...</p>
-            ) : error ? (
-              <p className="quote-text text-yellow-300">{error}</p>
-            ) : quote ? (
-              <>
-                <p className="quote-text">{quote.text}</p>
-                <p className="quote-author">- {quote.author}</p>
-                {showTranslation && quote.translation && (
-                  <p className="quote-translation">{quote.translation}</p>
-                )}
-              </>
-            ) : null}
-          </div>
-
-          <div className="fact-card">
-            <Coffee className="text-emerald-300" />
-            <p>{fact}</p>
-          </div>
-        </div>
-
-        <div>
-          {weather && (
-            <AnimatedWeather
-              weatherCode={weather.weathercode}
-              temperature={weather.temperature}
-              windSpeed={weather.windspeed}
-              windDirection={weather.winddirection}
-              cloud_cover={weather.cloud_cover}
-              rain={weather.rain}
-              showers={weather.showers}
-              snowfall={weather.snowfall}
-              is_day={weather.is_day}
-              wind_gusts={weather.wind_gusts || 0}
+          {!isServerConnected && (
+            <span
+              className="offline-dot"
+              role="status"
+              title="Offline mode - using cached data"
+              aria-label="Offline mode - using cached data"
             />
           )}
         </div>
 
-        {nasaImage && (
-          <div
-            className={`nasa-info ${showNasaInfo ? 'expanded' : ''}`}
-            onClick={() => setShowNasaInfo(!showNasaInfo)}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="nasa-title">{nasaImage.title}</h3>
-              <Info className="w-5 h-5 text-blue-300" />
+        <main className="split">
+          <section className="time-block">
+            {occasion ? <OccasionArt occasion={occasion} now={occasionNow} /> : (
+              <h1 className="greeting-text" key={`g${step}`}>{getGreetings(time.getHours())}</h1>
+            )}
+            <div className="clock" aria-label={`${hours}:${minutes}`}>
+              {hours}
+              <span className="clock-colon">:</span>
+              {minutes}
             </div>
-            <p className={`nasa-description ${showNasaInfo ? 'expanded' : ''}`}>
-              {nasaImage.explanation}
-            </p>
+            <div className="date-text">{formattedDate}</div>
+          </section>
+
+          <section className="reading-column">
+            <div className="quote-block" key={`q${step}`} onClick={() => setShowTranslation(!showTranslation)}>
+              <div className="gold-rule" />
+              {isLoading ? (
+                <p className="quote-text">Lädt Zitat...</p>
+              ) : error ? (
+                <p className="quote-text">{error}</p>
+              ) : shownQuote ? (
+                <>
+                  <p className="quote-text">{shownQuote.text}</p>
+                  <p className="quote-author">{shownQuote.author}</p>
+                  {showTranslation && shownQuote.translation && (
+                    <p className="quote-translation">{shownQuote.translation}</p>
+                  )}
+                </>
+              ) : null}
+            </div>
+
+            {(item || fact) && (
+              <div className="fact-block" key={`f${step}`}>
+                <span className="fact-kicker">{item ? item.kind : 'Wusstest du?'}</span>
+                <p>{item ? item.text : fact}</p>
+              </div>
+            )}
+          </section>
+        </main>
+
+        {weather && (
+          <AnimatedWeather
+            weatherCode={weather.weathercode}
+            temperature={weather.temperature}
+            windSpeed={weather.windspeed}
+            windDirection={weather.winddirection}
+            cloud_cover={weather.cloud_cover}
+            rain={weather.rain}
+            showers={weather.showers}
+            snowfall={weather.snowfall}
+            is_day={weather.is_day}
+            wind_gusts={weather.wind_gusts || 0}
+          />
+        )}
+
+        <BrandLogo variant="side" className="brand-logo" />
+
+        {displayedImage && (
+          <div className="photo-credit" onClick={() => setShowNasaInfo(!showNasaInfo)}>
+            <Camera className="photo-credit-icon" />
+            <div className="photo-credit-text">
+              <div className="photo-credit-title">{displayedImage.title}</div>
+              {photoCredit && <div className="photo-credit-by">{photoCredit}</div>}
+              {showNasaInfo && photoDescription && (
+                <p className="photo-credit-description">{photoDescription}</p>
+              )}
+            </div>
           </div>
         )}
       </div>

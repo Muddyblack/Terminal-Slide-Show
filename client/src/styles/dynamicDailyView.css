@@ -1,19 +1,33 @@
 @reference './index.css';
 
+/* Daily view: one sky, gold as the only accent (#e3dc9c, from the logo). */
+
 .daily-view {
+  --gold: #e3dc9c;
+  /* second accent and sky tints; occasion themes override these, own themes keep them */
+  --accent-2: #b9c7e8;
+  --tint-1: 10 16 32;
+  --tint-2: 20 32 61;
+  --tint-3: 29 44 82;
+  --soft: rgba(255, 255, 255, 0.9);
+  --glass: rgba(255, 255, 255, 0.07);
+  --glass-line: rgba(255, 255, 255, 0.14);
   position: fixed;
   inset: 0;
   overflow: hidden;
   transition: background 0.5s ease;
-  flex-direction: column;
-}
-
-.daily-view.day {
-  background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+  color: #fff;
 }
 
 .daily-view.night {
-  background: linear-gradient(135deg, #0f172a, #1e293b, #334155);
+  background: linear-gradient(160deg, #0a1020 0%, #14203d 55%, #1d2c52 100%);
+}
+
+.daily-view.day {
+  --soft: rgba(255, 255, 255, 0.92);
+  --glass: rgba(255, 255, 255, 0.12);
+  --glass-line: rgba(255, 255, 255, 0.22);
+  background: linear-gradient(160deg, #22407a 0%, #6a5a8e 55%, #d89a5c 100%);
 }
 
 .nasa-background {
@@ -28,107 +42,26 @@
   @apply opacity-40;
 }
 
-.nasa-info {
-  position: fixed;
-  top: 50%;
-  left: 0;
-  transform: translateY(-50%) translateX(-90%);
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  padding: clamp(1rem, 1vw, 2rem) clamp(1.5rem, 1.5vw, 3rem);
-  border-radius: 0 1rem 1rem 0;
-  max-width: clamp(340px, 25vw, 600px);
-  max-height: 80vh;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-}
-
-.nasa-info.expanded {
-  transform: translateY(-50%) translateX(0);
-}
-
-.nasa-info:hover {
-  transform: translateY(-50%) translateX(-10%);
-}
-
-.nasa-info.expanded:hover {
-  transform: translateY(-50%) translateX(0);
-}
-
-.nasa-info .flex {
-  display: flex;
-}
-
-.nasa-info .items-center {
-  align-items: center;
-}
-
-.nasa-info .justify-between {
-  justify-content: space-between;
-}
-
-.nasa-info .gap-2 {
-  gap: clamp(0.5rem, 0.5vw, 1rem);
-}
-
-.nasa-title {
-  font-size: clamp(1rem, 1vw, 2rem);
-  font-weight: 500;
-  color: #fff;
-  margin-bottom: clamp(0.5rem, 0.5vw, 1rem);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.nasa-description {
-  font-size: clamp(0.875rem, 0.875vw, 1.75rem);
-  color: rgba(255, 255, 255, 0.8);
-  line-height: 1.4;
-  overflow-y: auto;
-  max-height: 0;
-  transition: max-height 0.3s ease;
-}
-
-.nasa-description.expanded {
-  max-height: calc(70vh - 4rem);
-  margin-top: clamp(0.5rem, 0.5vw, 1rem);
-  padding-right: clamp(0.5rem, 0.5vw, 1rem);
-}
-
+/* Photo of the day stays visible; the overlay only tints it enough for the text */
 .background-overlay {
   position: absolute;
   inset: 0;
-  transition: background 0.5s ease;
   z-index: 1;
+  transition: background 0.5s ease;
+}
+
+/* extra scrims behind the clock (left) and the reading column (bottom right), so text stays readable on any picture */
+.background-overlay {
+  --scrim: radial-gradient(ellipse 60% 55% at 22% 58%, rgba(8, 12, 24, 0.5), transparent 70%),
+    radial-gradient(ellipse 55% 45% at 78% 74%, rgba(8, 12, 24, 0.5), transparent 70%);
+}
+
+.background-overlay.night {
+  background: var(--scrim), linear-gradient(160deg, rgba(10, 16, 32, 0.6), rgba(20, 32, 61, 0.5), rgba(29, 44, 82, 0.45));
 }
 
 .background-overlay.day {
-  background: linear-gradient(135deg,
-      rgba(26, 42, 108, 0.7),
-      rgba(178, 31, 31, 0.6),
-      rgba(253, 187, 45, 0.5));
-}
-
-
-.background-overlay.night {
-  background: linear-gradient(135deg,
-      rgba(15, 23, 42, 0.8),
-      rgba(30, 41, 59, 0.7),
-      rgba(51, 65, 85, 0.6));
-}
-
-.background-overlay.night {
-  background: linear-gradient(135deg,
-      rgba(15, 23, 42, 0.8),
-      rgba(30, 41, 59, 0.7),
-      rgba(51, 65, 85, 0.6));
+  background: var(--scrim), linear-gradient(160deg, rgba(34, 64, 122, 0.55), rgba(106, 90, 142, 0.45), rgba(216, 154, 92, 0.35));
 }
 
 .background-effects {
@@ -144,417 +77,334 @@
 }
 
 .content-wrapper {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6), 0 2px 20px rgba(0, 0, 0, 0.4);
   position: relative;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: clamp(1rem, 2vw, 4rem);
-  color: white;
   z-index: 10;
-  max-width: 100%;
-  margin: 0 auto;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  padding: clamp(1rem, 2.4vw, 4rem) clamp(1.25rem, 3vw, 5rem);
+}
+
+/* top bar */
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 1vw;
 }
 
 .location-badge {
-  position: absolute;
-  top: clamp(2rem, 2vw, 4rem);
-  left: clamp(2rem, 2vw, 4rem);
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: clamp(0.5rem, 0.5vw, 1rem);
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(8px);
-  padding: clamp(0.75rem, 0.75vw, 1.5rem) clamp(1.5rem, 1.5vw, 3rem);
+  gap: 0.6vw;
+  font-size: clamp(0.9rem, 1.15vw, 2.2rem);
+  color: var(--soft);
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
   border-radius: 9999px;
-  font-size: clamp(1.125rem, 1.125vw, 2.25rem);
-  font-weight: 500;
-  transition: transform 0.3s ease;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  padding: 0.5vw 1.1vw;
+  backdrop-filter: blur(6px);
 }
 
-.location-badge:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+.location-badge svg {
+  width: 1.2em;
+  height: 1.2em;
 }
 
-.main-content {
-  text-align: center;
-  max-width: clamp(48rem, 50vw, 96rem);
+.offline-dot {
+  width: 0.7vw;
+  min-width: 8px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 0 4px rgba(227, 220, 156, 0.18);
+}
+
+/* split layout: time left, reading column right */
+.split {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 4vw;
+  align-items: center;
   animation: fadeIn 1s ease-out;
 }
 
+.time-block {
+  display: grid;
+  gap: 0.8vw;
+  padding-left: 1vw;
+  margin-bottom: 5vw;
+}
+
 .greeting-text {
-  font-family: "Noto Color Emoji", "Roboto", sans-serif;
-  font-size: clamp(4rem, 4vw, 8rem);
-  font-weight: bold;
-  margin-bottom: clamp(1.5rem, 1.5vw, 3rem);
-  color: #fff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  font-size: clamp(1.1rem, 1.7vw, 3.4rem);
+  font-weight: 400;
+  color: var(--soft);
+  text-wrap: balance;
 }
 
-.datetime-display {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(0.5rem, 0.5vw, 1rem);
-  margin-bottom: clamp(2rem, 2vw, 4rem);
+.clock {
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  font-weight: 500;
+  font-size: 12.5vw;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
 }
 
-.date,
-.time {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(0.75rem, 0.75vw, 1.5rem);
-  font-size: clamp(1.5rem, 1.5vw, 3rem);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+.clock-colon {
+  color: var(--gold);
+  animation: blink 2s ease-in-out infinite;
 }
 
-.quote-card,
-.fact-card {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(12px);
-  border-radius: clamp(1rem, 1vw, 2rem);
-  padding: clamp(1.5rem, 1.5vw, 3rem);
-  margin: clamp(1rem, 1vw, 2rem) 0;
-  transition: all 0.3s ease;
+@keyframes blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clock-colon {
+    animation: none;
+  }
+}
+
+.date-text {
+  color: var(--soft);
+  font-size: clamp(1rem, 1.5vw, 3rem);
+}
+
+.reading-column {
+  /* sits below the weather card (top right) and above the logo */
+  align-self: end;
+  margin-bottom: 10vw;
+  display: grid;
+  gap: 1.6vw;
+  border-left: 1px solid var(--glass-line);
+  padding-left: 3vw;
+}
+
+.gold-rule {
+  width: 4vw;
+  height: 2px;
+  background: var(--gold);
+  border-radius: 2px;
+  margin-bottom: 1vw;
+}
+
+.quote-block {
   cursor: pointer;
-  max-width: clamp(48rem, 50vw, 96rem);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transform-origin: center;
-  will-change: transform, background;
+  animation: textIn 0.8s ease-out;
 }
 
-.quote-card:hover,
-.fact-card:hover {
-  transform: translateY(-4px) scale(1.01);
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+.fact-block,
+.greeting-text {
+  animation: textIn 0.8s ease-out;
+}
+
+@keyframes textIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quote-block,
+  .fact-block,
+  .greeting-text {
+    animation: none;
+  }
 }
 
 .quote-text {
-  font-size: clamp(1.5rem, 1.5vw, 3rem);
+  font-size: clamp(1.1rem, 1.7vw, 3.4rem);
   font-style: italic;
-  margin: clamp(1rem, 1vw, 2rem) 0;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .quote-author {
-  font-size: clamp(1.125rem, 1.125vw, 2.25rem);
-  color: rgba(255, 255, 255, 0.8);
+  margin-top: 0.5vw;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  font-size: clamp(0.75rem, 1vw, 2rem);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--soft);
 }
 
 .quote-translation {
-  font-size: clamp(1rem, 1vw, 2rem);
-  color: #93c5fd;
-  margin-top: clamp(1rem, 1vw, 2rem);
+  margin-top: 0.8vw;
+  font-size: clamp(0.85rem, 1.1vw, 2.2rem);
+  color: var(--gold);
   animation: fadeIn 0.3s ease-out;
 }
 
-
-@media (max-width: 640px) {
-  .greeting-text {
-    font-size: 2.5rem;
-  }
-
-  .location-badge {
-    font-size: 1rem;
-    padding: 0.5rem 1rem;
-  }
-
-  .quote-text {
-    font-size: 1.25rem;
-  }
+.fact-block {
+  font-size: clamp(0.9rem, 1.15vw, 2.3rem);
+  line-height: 1.5;
+  color: #fff;
 }
 
-.dhbw-logo {
+.fact-kicker {
+  display: block;
+  margin-bottom: 0.3vw;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  font-size: 0.8em;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+/* Logo and photo credit are docked into the bottom corners like the weather card is into the top right:
+   flush with the screen edges, a border only on the inner sides, one rounded inner corner. */
+.brand-logo,
+.photo-credit {
   position: absolute;
-  /* Change from fixed pixel value to viewport-based units with a minimum */
-  bottom: max(30px, 7vh); /* This ensures it stays at least 70px from bottom but scales with viewport height */
-  right: clamp(10px, 1vw, 10px);
-  padding: clamp(0.75rem, 0.75vw, 1.5rem);
-  border-radius: clamp(1rem, 1vw, 2rem);
-  transition: all 0.3s ease;
+  bottom: 0;
+  background: var(--background-image-weather-gradient);
+  backdrop-filter: blur(24px);
+  border: 0 solid rgba(255, 255, 255, 0.3);
+  border-top-width: 1px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
   z-index: 20;
 }
 
-.day .dhbw-logo {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(8px);
-}
-
-.night .dhbw-logo {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-}
-
-.dhbw-logo img {
-  height: clamp(120px, min(12vh, 240px), 240px); /* This prevents the logo from getting too large */
+/* logo: bottom right */
+.brand-logo {
+  right: 0;
+  height: clamp(26px, 2.5vw, 56px);
+  /* same glass, a touch darker, so the gold does not sit on beige */
+  background: linear-gradient(145deg, rgba(10, 14, 26, 0.38), rgba(10, 14, 26, 0.26)), var(--background-image-weather-gradient);
   width: auto;
-  transition: all 0.3s ease;
+  box-sizing: content-box;
+  padding: 0.55vw 0.9vw;
+  border-left-width: 1px;
+  border-top-left-radius: 1.5rem;
+  pointer-events: none;
 }
 
-.day .dhbw-logo img {
-  opacity: 0.9;
-  filter: none;
+/* photo credit: bottom left; click (or the timer) shows the description */
+.photo-credit {
+  left: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7vw;
+  max-width: min(34vw, 620px);
+  padding: 0.8vw 1.2vw;
+  border-right-width: 1px;
+  border-top-right-radius: 1.5rem;
+  cursor: pointer;
 }
 
-.night .dhbw-logo img {
-  opacity: 1;
-  /* Complex filter to darken grays while preserving red */
-  filter:
-    brightness(0.9)
-    /* Slightly reduce overall brightness */
-    contrast(1.2)
-    /* Increase contrast */
-    saturate(1.2)
-    /* Boost color saturation */
-    hue-rotate(-5deg);
+.photo-credit-icon {
+  flex: none;
+  width: clamp(14px, 1.2vw, 28px);
+  height: clamp(14px, 1.2vw, 28px);
+  margin-top: 0.15vw;
+  color: var(--gold);
 }
 
-.dhbw-logo:hover {
-  transform: translateY(-2px);
+.photo-credit-text {
+  min-width: 0;
 }
 
-.night .dhbw-logo:hover {
-  background: rgba(0, 0, 0, 0.5);
+.photo-credit-title,
+.photo-credit-by {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-@media (max-width: 640px) {
-  .dhbw-logo img {
-    height: 30px;
-  }
+.photo-credit-title {
+  font-size: clamp(0.8rem, 1vw, 2rem);
+  font-weight: 500;
+  color: #fff;
+}
 
-  .dhbw-logo {
-    bottom: 0.5rem;
-    right: 0.5rem;
-    padding: 0.5rem;
-  }
+.photo-credit-by {
+  font-size: clamp(0.7rem, 0.82vw, 1.6rem);
+  color: var(--soft);
+}
+
+.photo-credit-description {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 0.4vw;
+  font-size: clamp(0.7rem, 0.82vw, 1.6rem);
+  line-height: 1.4;
+  color: var(--soft);
 }
 
 
-@media (max-width: 1200px) {
-  .greeting-text {
-    font-size: 3.5rem;
-  }
-
-  .location-badge {
-    font-size: 1.125rem;
-    padding: 0.6rem 1.2rem;
-  }
-
-  .quote-text {
-    font-size: 1.375rem;
-  }
-}
-
+/* Narrow screens: stack the columns */
 @media (max-width: 900px) {
-  .greeting-text {
-    font-size: 3rem;
-  }
-
-  .location-badge {
-    font-size: 1.125rem;
-    padding: 0.6rem 1.2rem;
-  }
-
-  .quote-text {
-    font-size: 1.375rem;
-  }
-}
-
-@media (max-width: 640px) {
-  .daily-view {
-    padding: 1rem;
-  }
-
-  .nasa-info {
-    top: auto;
-    bottom: 1rem;
-    left: 50%;
-    transform: translateX(-50%);
-    max-width: 90%;
-    border-radius: 1rem;
-  }
-
-  .nasa-info.expanded {
-    transform: translateX(-50%);
-  }
-
-  .nasa-info:hover,
-  .nasa-info.expanded:hover {
-    transform: translateX(-50%);
-  }
-
   .content-wrapper {
-    padding: 1rem;
+    overflow-y: auto;
   }
 
-  .location-badge {
-    top: 1rem;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 0.5rem 1rem;
-    font-size: 1rem;
+  .split {
+    grid-template-columns: 1fr;
+    gap: 6vw;
+    align-content: center;
+    padding-block: 4vw;
   }
 
-  .main-content {
-    max-width: 100%;
+  .clock {
+    font-size: 26vw;
   }
 
-  .greeting-text {
-    font-size: 2.5rem;
-  }
-
-  .datetime-display {
-    gap: 0.25rem;
-    margin-bottom: 1rem;
-  }
-
-  .date,
-  .time {
-    font-size: 1.25rem;
-  }
-
-  .quote-card,
-  .fact-card {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(12px);
-    border-radius: clamp(1rem, 1vw, 2rem);
-    padding: clamp(1.5rem, 1.5vw, 3rem);
-    margin: clamp(1rem, 1vw, 2rem) 0;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    max-width: clamp(48rem, 50vw, 96rem);
-  }
-
-  .quote-card:hover,
-  .fact-card:hover {
-    transform: translateY(-4px);
-    background: rgba(255, 255, 255, 0.1);
-  }
-
+  .greeting-text,
   .quote-text {
-    font-size: clamp(1.5rem, 1.5vw, 3rem);
-    font-style: italic;
-    margin: clamp(1rem, 1vw, 2rem) 0;
-    line-height: 1.4;
+    font-size: 1.15rem;
+  }
+
+  .date-text,
+  .fact-block {
+    font-size: 0.95rem;
   }
 
   .quote-author {
-    font-size: clamp(1.125rem, 1.125vw, 2.25rem);
-    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.8rem;
   }
 
-  .quote-translation {
-    font-size: clamp(1rem, 1vw, 2rem);
-    color: #93c5fd;
-    margin-top: clamp(1rem, 1vw, 2rem);
-    animation: fadeIn 0.3s ease-out;
+  .reading-column {
+    align-self: auto;
+    margin-bottom: 0;
+    border-left: 0;
+    padding-left: 0;
+    gap: 4vw;
   }
 
-  .dhbw-logo {
-    position: absolute;
-    bottom: clamp(70px, 7vh, 140px);
-    right: clamp(10px, 1vw, 20px);
-    padding: clamp(0.75rem, 0.75vw, 1.5rem);
-    border-radius: clamp(1rem, 1vw, 2rem);
-    transition: all 0.3s ease;
-    z-index: 20;
-  }
-
-
-  .dhbw-logo img {
-    height: clamp(120px, 12vh, 240px);
-    width: auto;
-    transition: all 0.3s ease;
-  }
-}
-
-
-/* Media Queries */
-@media (min-width: 2560px) {
-  :root {
-    font-size: 20px;
-  }
-
-  .greeting-text {
-    font-size: 6rem;
-  }
-
-  .quote-text {
-    font-size: 2.5rem;
-  }
-
-  .dhbw-logo img {
-    height: 180px;
-  }
-}
-
-@media (min-width: 3840px) {
-  :root {
-    font-size: 24px;
-  }
-
-  .greeting-text {
-    font-size: 8rem;
-  }
-
-  .quote-text {
-    font-size: 3rem;
-  }
-
-  .dhbw-logo img {
-    height: 240px;
-  }
-}
-
-@media (max-width: 640px) {
-  .greeting-text {
-    font-size: 2.5rem;
+  .gold-rule {
+    width: 12vw;
+    margin-bottom: 3vw;
   }
 
   .location-badge {
-    font-size: 1rem;
-    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    padding: 0.4rem 0.9rem;
   }
 
-  .quote-text {
-    font-size: 1.25rem;
+  .brand-logo {
+    height: 20px;
+    padding: 5px 8px;
+    border-top-left-radius: 12px;
   }
 
-  .dhbw-logo {
-    bottom: 0.5rem;
-    right: 0.5rem;
-    padding: 0.5rem;
-  }
-
-  .dhbw-logo img {
-    height: 30px;
-  }
-}
-
-
-@media (max-width: 400px) {
-  .greeting-text {
-    font-size: 2rem;
-  }
-
-  .location-badge {
-    font-size: 0.875rem;
-    padding: 0.4rem 0.8rem;
-  }
-
-  .quote-text {
-    font-size: 1.125rem;
+  .photo-credit {
+    max-width: calc(100% - 10rem);
+    padding: 6px 10px;
+    border-top-right-radius: 12px;
+    gap: 8px;
   }
 }
-
-
 
 /* Animations */
 
@@ -638,4 +488,522 @@
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
+}
+.photo-exit { animation: photo-retire 2.4s ease-in-out both; }
+@keyframes photo-retire { to { opacity: 0; } }
+.photo-enter { animation: photo-reveal 2.4s ease-in-out both; }
+@keyframes photo-reveal { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .photo-enter, .photo-exit { animation-duration: .001ms; }
+}
+
+/* ================= Occasions =================
+   Each theme sets an accent (--gold, used by the clock colon, rules and kickers), a second accent
+   and three tint colours for the sky / photo overlay, so the whole screen follows the day. */
+
+.daily-view.theme-christmas {
+  --gold: #f2d9a0;
+  --accent-2: #e8837b;
+  --tint-1: 6 20 17;
+  --tint-2: 20 42 34;
+  --tint-3: 74 22 32;
+}
+
+.daily-view.theme-winter {
+  --gold: #d3e6f5;
+  --accent-2: #9fc3e6;
+  --tint-1: 8 18 34;
+  --tint-2: 24 44 72;
+  --tint-3: 64 92 126;
+}
+
+.daily-view.theme-newyear {
+  --gold: #f5d98e;
+  --accent-2: #f3a6c8;
+  --accent-3: #9fd6f5;
+  --tint-1: 5 7 20;
+  --tint-2: 16 15 46;
+  --tint-3: 50 24 66;
+}
+
+.daily-view.theme-halloween {
+  --gold: #ffb766;
+  --accent-2: #c4a1ff;
+  --tint-1: 13 8 22;
+  --tint-2: 38 16 46;
+  --tint-3: 92 40 14;
+}
+
+.daily-view.theme-unity {
+  --gold: #f0d27a;
+  --accent-2: #e2685d;
+  --tint-1: 10 12 18;
+  --tint-2: 26 29 40;
+  --tint-3: 66 54 30;
+}
+
+.daily-view.theme-autumn {
+  --gold: #f2b984;
+  --accent-2: #e8d07e;
+  --tint-1: 20 14 12;
+  --tint-2: 50 30 22;
+  --tint-3: 112 60 28;
+}
+
+.daily-view.theme-spring {
+  --gold: #f6c6d2;
+  --accent-2: #cfe3b8;
+  --tint-1: 16 24 38;
+  --tint-2: 56 46 78;
+  --tint-3: 132 84 104;
+}
+
+.daily-view.theme-easter {
+  --gold: #e0eca8;
+  --accent-2: #f7c8da;
+  --tint-1: 14 30 36;
+  --tint-2: 40 64 64;
+  --tint-3: 120 112 66;
+}
+
+.daily-view.theme-carnival {
+  --gold: #ffd36e;
+  --accent-2: #f06f8f;
+  --accent-3: #6fd3e0;
+  --tint-1: 18 9 34;
+  --tint-2: 54 18 66;
+  --tint-3: 18 72 92;
+}
+
+/* the theme tints the sky and the overlay on top of the photo */
+.daily-view[class*='theme-'],
+.daily-view[data-skin] {
+  --fill-light: color-mix(in srgb, var(--gold) 45%, #fff);
+  background: linear-gradient(160deg, rgb(var(--tint-1)) 0%, rgb(var(--tint-2)) 55%, rgb(var(--tint-3)) 100%);
+}
+
+.daily-view[class*='theme-'] .background-overlay.night,
+.daily-view[data-skin] .background-overlay.night {
+  background: var(--scrim), linear-gradient(160deg, rgb(var(--tint-1) / .66), rgb(var(--tint-2) / .54), rgb(var(--tint-3) / .48));
+}
+
+.daily-view[class*='theme-'] .background-overlay.day,
+.daily-view[data-skin] .background-overlay.day {
+  background: var(--scrim), linear-gradient(160deg, rgb(var(--tint-1) / .55), rgb(var(--tint-2) / .44), rgb(var(--tint-3) / .38));
+}
+
+/* the occasion header needs its own shade on bright photos */
+.daily-view[class*='theme-'] .background-overlay,
+.daily-view[data-skin] .background-overlay {
+  --scrim: radial-gradient(ellipse 62% 72% at 20% 48%, rgba(6, 8, 18, 0.55), transparent 72%),
+    radial-gradient(ellipse 55% 45% at 78% 74%, rgba(6, 8, 18, 0.5), transparent 70%);
+}
+
+/* ---------- header: emblem, date, title, countdown ---------- */
+
+.occasion {
+  display: flex;
+  align-items: center;
+  gap: 1.6vw;
+  max-width: 46vw;
+  margin-bottom: 1.2vw;
+  animation: textIn 1s ease-out;
+}
+
+.occasion-emblem {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: clamp(64px, 6.4vw, 150px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  color: var(--gold);
+  background:
+    radial-gradient(circle at 32% 26%, color-mix(in srgb, var(--gold) 30%, transparent), transparent 62%),
+    rgba(8, 10, 22, 0.42);
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  box-shadow: 0 0 2.4vw color-mix(in srgb, var(--gold) 22%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+}
+
+.occasion-emblem-icon {
+  width: 46%;
+  height: 46%;
+  filter: drop-shadow(0 0 0.6vw color-mix(in srgb, var(--gold) 55%, transparent));
+}
+
+/* dotted outer ring, turning slowly */
+.occasion-emblem-ring {
+  position: absolute;
+  inset: -14%;
+  width: 128%;
+  height: 128%;
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 0.9;
+  stroke-linecap: round;
+  stroke-dasharray: 0.1 3.9;
+  opacity: 0.55;
+  animation: ring-turn 60s linear infinite;
+}
+
+@keyframes ring-turn {
+  to { transform: rotate(1turn); }
+}
+
+.occasion-copy {
+  min-width: 0;
+}
+
+.occasion-kicker {
+  display: block;
+  margin-bottom: 0.35vw;
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  font-size: clamp(0.7rem, 0.82vw, 1.6rem);
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.occasion-title {
+  font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+  font-optical-sizing: auto;
+  font-size: clamp(1.6rem, 3.3vw, 6.4rem);
+  font-weight: 500;
+  line-height: 1.04;
+  letter-spacing: -0.01em;
+  color: var(--fill-light);
+  text-wrap: balance;
+}
+
+.occasion-text {
+  margin-top: 0.5vw;
+  max-width: 30em;
+  font-size: clamp(0.9rem, 1.15vw, 2.2rem);
+  line-height: 1.45;
+  color: var(--soft);
+}
+
+.occasion-countdown {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5em;
+  margin-top: 0.9vw;
+  padding: 0.35em 0.95em 0.4em;
+  font-size: clamp(0.8rem, 0.95vw, 1.9rem);
+  color: var(--soft);
+  background: rgba(8, 10, 22, 0.38);
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, transparent);
+  border-radius: 9999px;
+  backdrop-filter: blur(8px);
+}
+
+.occasion-countdown b {
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  font-size: 1.25em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold);
+}
+
+.occasion-countdown-label {
+  font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  font-size: 0.78em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0.8;
+}
+
+/* ---------- falling particles ---------- */
+
+.particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.particles span {
+  position: absolute;
+  top: -4vw;
+  animation: fall linear infinite;
+}
+
+.particles.snow span {
+  width: var(--size);
+  height: var(--size);
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 30%, rgba(255, 255, 255, 0) 72%);
+  opacity: 0.85;
+  filter: blur(0.5px);
+}
+
+.particles.glyphs span {
+  width: calc(var(--size) * 2.4);
+  height: calc(var(--size) * 2.4);
+  color: var(--gold);
+  opacity: 0.5;
+  perspective: 200px;
+}
+
+.particles.glyphs span:nth-child(3n) { color: var(--accent-2, var(--gold)); }
+.particles.glyphs span:nth-child(5n) { color: var(--accent-3, var(--fill-light)); }
+
+.particles.glyphs svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* confetti, leaves and petals flutter while they fall */
+  animation: flutter var(--spin) ease-in-out infinite alternate;
+}
+
+.theme-newyear .particles.glyphs svg {
+  animation: twinkle var(--spin) ease-in-out infinite;
+}
+
+@keyframes flutter {
+  from { transform: rotate3d(1, 0.4, 0, -55deg); }
+  to { transform: rotate3d(1, 0.4, 0, 55deg); }
+}
+
+@keyframes fall {
+  0% { transform: translate(0, 0) rotate(-12deg); }
+  35% { transform: translate(var(--drift), 39vh) rotate(18deg); }
+  70% { transform: translate(0, 78vh) rotate(-8deg); }
+  100% { transform: translate(var(--drift), 112vh) rotate(16deg); }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.25; transform: scale(0.6); }
+}
+
+/* ---------- flybys (sleigh, bats) ---------- */
+
+.scene-fly {
+  position: absolute;
+  top: 7vh;
+  left: -40vw;
+  z-index: 3;
+  pointer-events: none;
+  animation: fly 56s linear 2s infinite;
+  filter: drop-shadow(0 0 1vw color-mix(in srgb, var(--gold) 30%, transparent)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35));
+}
+
+@keyframes fly {
+  0% { transform: translateX(0); opacity: 0; }
+  2% { opacity: 0.92; }
+  30% { transform: translateX(150vw); opacity: 0.92; }
+  31%, 100% { transform: translateX(150vw); opacity: 0; }
+}
+
+.flyer-art {
+  display: block;
+  width: 30vw;
+  height: auto;
+  overflow: visible;
+  animation: flight-arc 7s ease-in-out infinite;
+}
+
+@keyframes flight-arc {
+  0%, 100% { transform: translateY(1vh) rotate(1.5deg); }
+  50% { transform: translateY(-3vh) rotate(-2deg); }
+}
+
+.flyer-bob { animation: bob 1.4s ease-in-out infinite; }
+.flyer-bob.b2 { animation-delay: -0.5s; }
+.flyer-bob.b3 { animation-delay: -0.9s; }
+
+@keyframes bob {
+  50% { translate: 0 -6px; }
+}
+
+/* reindeer legs gallop */
+.leg {
+  transform-box: fill-box;
+  animation: gallop 0.7s ease-in-out infinite alternate;
+}
+.leg-front { transform-origin: 0 0; }
+.leg-back { transform-origin: 100% 0; }
+.leg.b { animation-delay: -0.35s; }
+
+@keyframes gallop {
+  from { transform: rotate(-14deg); }
+  to { transform: rotate(16deg); }
+}
+
+.trail .twinkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: twinkle 1.6s ease-in-out infinite;
+}
+
+/* bat swarm: each bat bobs on its own, wings flap */
+.scene-fly.bats {
+  top: 9vh;
+  width: 26vw;
+  height: 22vh;
+  animation-duration: 48s;
+}
+
+.bat {
+  position: absolute;
+  width: calc(7vw * var(--s));
+  animation: bat-bob 2.6s ease-in-out infinite;
+}
+
+.bat-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.bat-flap .wing {
+  transform-box: fill-box;
+  transform-origin: 100% 40%;
+  animation: flap 0.32s ease-in-out var(--flap-delay, 0s) infinite alternate;
+}
+
+@keyframes flap {
+  from { transform: scaleY(1) rotate(0deg); }
+  to { transform: scaleY(-0.35) rotate(-8deg); }
+}
+
+@keyframes bat-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2.4vh); }
+}
+
+/* ---------- fireworks ---------- */
+
+.fireworks {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.burst {
+  position: absolute;
+  width: var(--size);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+}
+
+.burst.c1 { color: var(--gold); }
+.burst.c2 { color: var(--accent-2, var(--gold)); }
+.burst.c3 { color: var(--accent-3, var(--fill-light)); }
+
+.burst-bloom {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: bloom 8.4s cubic-bezier(0.15, 0.7, 0.3, 1) infinite;
+  filter: drop-shadow(0 0 0.5vw currentColor);
+}
+
+.burst-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+/* the rocket rises from below, then the bloom opens where it ends */
+.rocket {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2px;
+  height: 7vh;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, currentColor, transparent);
+  opacity: 0;
+  animation: rocket 8.4s ease-out infinite;
+}
+
+@keyframes rocket {
+  0% { transform: translateY(55vh); opacity: 0; }
+  2% { opacity: 0.9; }
+  11% { transform: translateY(0); opacity: 0.9; }
+  12%, 100% { transform: translateY(0); opacity: 0; }
+}
+
+@keyframes bloom {
+  0%, 11% { transform: scale(0.05); opacity: 0; }
+  12% { transform: scale(0.15); opacity: 1; }
+  30% { transform: scale(1); opacity: 0.85; }
+  44% { transform: scale(1.08) translateY(4%); opacity: 0; }
+  100% { transform: scale(1.08) translateY(4%); opacity: 0; }
+}
+
+/* ---------- easter bunny ---------- */
+
+.hopper {
+  position: absolute;
+  left: -12vw;
+  bottom: 2vh;
+  z-index: 3;
+  pointer-events: none;
+  animation: run 46s linear 3s infinite;
+  filter: drop-shadow(0 0 0.8vw color-mix(in srgb, var(--gold) 30%, transparent)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35));
+}
+
+@keyframes run {
+  0% { transform: translateX(0); opacity: 0; }
+  1% { opacity: 1; }
+  45% { transform: translateX(125vw); opacity: 1; }
+  46%, 100% { transform: translateX(125vw); opacity: 0; }
+}
+
+.hop {
+  transform-origin: 50% 100%;
+  animation: hop 0.95s infinite;
+}
+
+.bunny-art {
+  display: block;
+  width: 7.5vw;
+  height: auto;
+  overflow: visible;
+}
+
+@keyframes hop {
+  0% { transform: translateY(0) scale(1.06, 0.9); animation-timing-function: ease-out; }
+  12% { transform: translateY(-0.6vh) scale(0.95, 1.06) rotate(-6deg); animation-timing-function: ease-out; }
+  48% { transform: translateY(-7vh) scale(1, 1) rotate(-10deg); animation-timing-function: ease-in; }
+  88% { transform: translateY(0) scale(1, 1) rotate(4deg); }
+  100% { transform: translateY(0) scale(1.06, 0.9); }
+}
+
+@media (max-width: 900px) {
+  .occasion { max-width: 100%; gap: 1rem; margin-bottom: 0.5rem; }
+  .occasion-title { font-size: 1.8rem; }
+  .occasion-text { font-size: 0.95rem; }
+  .occasion-countdown { font-size: 0.85rem; margin-top: 0.6rem; }
+  .flyer-art { width: 70vw; }
+  .bunny-art { width: 18vw; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .particles,
+  .scene-fly,
+  .fireworks,
+  .hopper {
+    display: none;
+  }
+
+  .occasion,
+  .occasion-emblem-ring {
+    animation: none;
+  }
 }

@@ -1,0 +1,180 @@
+/* Full-screen weather, between the photo and the text (see weatherScene.tsx). */
+
+.weather-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.weather-scene > * {
+  position: absolute;
+  pointer-events: none;
+}
+
+.wx-canvas {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- mood: rain and storms darken the sky ---------- */
+
+.wx-mood {
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(6, 10, 18, 0.5), rgba(6, 10, 18, 0.15) 60%, rgba(6, 10, 18, 0.3));
+  opacity: 0.35;
+}
+
+.wx-drizzle .wx-mood { opacity: 0.3; }
+.wx-rain.wx-l2 .wx-mood { opacity: 0.5; }
+.wx-rain.wx-l3 .wx-mood { opacity: 0.7; }
+.wx-thunder .wx-mood { opacity: 0.7; }
+.wx-thunder.wx-l3 .wx-mood { opacity: 0.95; }
+.wx-snow .wx-mood {
+  background: linear-gradient(to bottom, rgba(200, 212, 228, 0.25), rgba(200, 212, 228, 0.05));
+  opacity: 0.6;
+}
+.wx-snow.wx-night .wx-mood {
+  background: linear-gradient(to bottom, rgba(40, 52, 72, 0.4), rgba(40, 52, 72, 0.1));
+}
+
+/* ---------- heavy clouds drifting along the top ---------- */
+
+.wx-clouds {
+  top: 0;
+  left: 0;
+  width: calc(100% + 1400px);
+  height: 62%;
+  background-image: var(--cloud-tex);
+  background-size: 1400px 700px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.6) 40%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.6) 40%, transparent 100%);
+  opacity: 0.55;
+  animation: wx-drift 160s linear infinite;
+}
+
+.wx-drizzle .wx-clouds,
+.wx-snow .wx-clouds { opacity: 0.35; }
+.wx-rain.wx-l3 .wx-clouds { opacity: 0.75; }
+.wx-thunder .wx-clouds { opacity: 0.9; animation-duration: 70s; }
+.wx-thunder.wx-l3 .wx-clouds { animation-duration: 45s; }
+.wx-snow.wx-day .wx-clouds { opacity: 0.2; }
+
+/* ---------- cloud shadows passing over on partly cloudy / overcast days ---------- */
+
+.wx-shadows {
+  inset: 0 auto 0 0;
+  width: calc(100% + 1400px);
+  background-image: var(--shadow-tex);
+  background-size: 1400px 700px;
+  opacity: 0.3;
+  animation: wx-drift 220s linear infinite;
+}
+
+.wx-overcast .wx-shadows { opacity: 0.5; }
+.wx-night .wx-shadows { opacity: 0.2; }
+
+/* ---------- clear day: a soft sun glow from the top right ---------- */
+
+.wx-sun-glow {
+  inset: 0;
+  background: radial-gradient(ellipse 55% 50% at 92% 4%, rgba(255, 214, 140, 0.22), rgba(255, 214, 140, 0.06) 45%, transparent 70%);
+  animation: wx-glow 12s ease-in-out infinite;
+}
+
+@keyframes wx-glow {
+  50% { opacity: 0.65; }
+}
+
+/* ---------- fog ----------
+   Real fog mostly takes contrast and colour out of the scene, so the veil softens the photo
+   behind it (it never moves, so this stays cheap). On top drift two very soft, full-height
+   wisp layers that fade out towards the top: no edges anywhere. Grey, not white, so white
+   text keeps its contrast. */
+
+.wx-fog-veil {
+  inset: 0;
+  -webkit-backdrop-filter: blur(2px) saturate(0.65) contrast(0.88) brightness(1.02);
+  backdrop-filter: blur(2px) saturate(0.65) contrast(0.88) brightness(1.02);
+  background: linear-gradient(to top, rgba(192, 199, 207, 0.3), rgba(192, 199, 207, 0.1) 60%, rgba(192, 199, 207, 0.04));
+}
+
+.wx-night .wx-fog-veil {
+  -webkit-backdrop-filter: blur(2px) saturate(0.6) contrast(0.86) brightness(0.95);
+  backdrop-filter: blur(2px) saturate(0.6) contrast(0.86) brightness(0.95);
+  background: linear-gradient(to top, rgba(92, 106, 128, 0.32), rgba(92, 106, 128, 0.12) 60%, rgba(92, 106, 128, 0.05));
+}
+
+.wx-mist {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(100% + 1400px);
+  background-image: var(--fog-tex);
+  /* fog lies low: thin at the top, thick near the ground */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.55) 35%, #000 75%);
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.55) 35%, #000 75%);
+}
+
+.wx-mist-a {
+  background-size: 1400px 1100px;
+  opacity: 0.42;
+  animation: wx-drift 150s linear infinite;
+}
+
+.wx-mist-b {
+  background-size: 1400px 800px;
+  background-position: 0 260px;
+  opacity: 0.28;
+  animation: wx-drift-back 210s linear infinite;
+}
+
+/* rime fog (level 3) is denser */
+.wx-fog.wx-l3 .wx-mist-a { opacity: 0.55; }
+.wx-fog.wx-l3 .wx-mist-b { opacity: 0.4; }
+.wx-fog.wx-l3 .wx-fog-veil { background-color: rgba(200, 210, 222, 0.08); }
+
+@keyframes wx-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-1400px); }
+}
+
+@keyframes wx-drift-back {
+  from { transform: translateX(-1400px); }
+  to { transform: translateX(0); }
+}
+
+/* ---------- lightning: the whole sky lights up around the bolt ---------- */
+
+.wx-flash {
+  --fx: 50%;
+  inset: 0;
+  opacity: 0;
+  background:
+    radial-gradient(ellipse 60% 70% at var(--fx) 0%, rgba(225, 232, 255, 0.95), rgba(190, 205, 255, 0.45) 45%, transparent 80%),
+    rgba(190, 205, 255, 0.35);
+  will-change: opacity;
+}
+
+/* ---------- frost on the screen edges: freezing rain and rime fog ---------- */
+
+/* a smooth, cold rim, strongest in the corners; no texture */
+.wx-frost {
+  inset: 0;
+  background: radial-gradient(ellipse 85% 80% at 50% 50%, transparent 62%, rgba(214, 232, 252, 0.16) 85%, rgba(214, 232, 252, 0.3) 100%);
+  box-shadow: inset 0 0 6vw rgba(200, 225, 255, 0.18);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weather-scene * {
+    animation: none !important;
+  }
+
+  .wx-canvas,
+  .wx-flash,
+  .wx-mist {
+    display: none;
+  }
+}

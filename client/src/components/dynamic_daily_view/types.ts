@@ -38,5 +38,25 @@ export interface NasaImageType {
 }
 
 export interface GreetingsType {
-    [timeRange: string]: string;
+    [timeRange: string]: string | string[];
+}
+
+export interface OccasionType {
+    id: string;
+    title: string;
+    text: string;
+    theme: string;
+    particle: string;
+    /** The occasion's own day (YYYY-MM-DD); null for seasons. Missing in older cached responses. */
+    day?: string | null;
+}
+
+export interface ContentItem {
+    kind: string;
+    text: string;
+}
+
+export interface ContentType {
+    items: ContentItem[];
+    quotes: QuoteType[];
 }
