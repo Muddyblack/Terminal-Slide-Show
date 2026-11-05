@@ -1,29 +1,177 @@
 name: Release
 
 on:
+  # Merging a release PR (scripts/tag.sh) bumps the version in package.json on the default
+  # branch. That push is the release: the tag does not exist yet.
+  #
+  #   prepare -> ci -> package ----+
+  #                 \-> images ----+-> github-release (creates the tag, last)
+  #
+  # Nothing is published until the whole CI suite has passed on this exact commit. The tag and
+  # the GitHub release come last, so a failed build never leaves a tag behind. Retry a failed
+  # run with "Re-run failed jobs".
   push:
-    tags: ["v*"]
+    branches: [master]
+    paths: [package.json]
+  workflow_dispatch:
+
+# One release at a time, and never cancel a half-published one.
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  release:
+  # Reads the version and works out whether it still needs a release. Pushes that touch
+  # package.json without bumping the version (or re-run an already released one) stop here.
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+      new: ${{ steps.v.outputs.new }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Work out the version and whether it is released
+        id: v
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          VERSION="$(node scripts/version.mjs get)"
+          TAG="v${VERSION}"
+          NEW=true
+          if [ "$GITHUB_REF_NAME" != "$DEFAULT_BRANCH" ]; then
+            echo "::notice::Releases are only cut from $DEFAULT_BRANCH."
+            NEW=false
+          # Releases before the v prefix were tagged without it (2.1.2)
+          elif git ls-remote --exit-code --tags origin "refs/tags/${TAG}" "refs/tags/${VERSION}" >/dev/null 2>&1; then
+            echo "::notice::${VERSION} is already released."
+            NEW=false
+          fi
+          {
+            echo "version=$VERSION"
+            echo "tag=$TAG"
+            echo "new=$NEW"
+            case "$VERSION" in *-*) echo "prerelease=true" ;; *) echo "prerelease=false" ;; esac
+          } >> "$GITHUB_OUTPUT"
+
+  # The whole suite on the release commit. The PR's own run does not count: master may have
+  # moved since.
+  ci:
+    needs: prepare
+    if: needs.prepare.outputs.new == 'true'
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  # The tarball the Ansible role downloads (and checks against the .sha256 next to it)
+  package:
+    needs: [prepare, ci]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Test
-        run: npm ci && npm test
-        working-directory: server
-      - name: Package
-        run: tools/package-release.sh "${GITHUB_REF_NAME#v}" dist-release
-      - name: Publish
-        uses: softprops/action-gh-release@v2
+      - run: tools/package-release.sh "${{ needs.prepare.outputs.version }}" dist-release
+      - uses: actions/upload-artifact@v4
         with:
+          name: dist
+          path: dist-release/
+
+  # Backend and frontend images for Raspberry Pis (arm64) and ordinary machines
+  images:
+    needs: [prepare, ci]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - image: backend
+            dockerfile: Dockerfile.backend
+          - image: frontend
+            dockerfile: Dockerfile.frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}-${{ matrix.image }}
+          flavor: latest=false
+          tags: |
+            type=raw,value=latest,enable=${{ needs.prepare.outputs.prerelease != 'true' }}
+            type=semver,pattern={{version}},value=${{ needs.prepare.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.prepare.outputs.version }},enable=${{ needs.prepare.outputs.prerelease != 'true' }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  # Creates the tag at the tested commit and the GitHub release with grouped notes
+  github-release:
+    needs: [prepare, package, images]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Release notes since the last release
+        id: notes
+        run: |
+          PREV_TAG="$(git tag --sort=-creatordate | grep -E '^v?[0-9]' | sed -n '1p')"
+          {
+            echo "notes<<EOF"
+            scripts/release-notes.sh "$PREV_TAG" HEAD
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: ${{ needs.prepare.outputs.version }}
+          prerelease: ${{ needs.prepare.outputs.prerelease == 'true' }}
           files: |
-            dist-release/*.tar.gz
-            dist-release/*.sha256
-          generate_release_notes: true
+            dist/*.tar.gz
+            dist/*.sha256
+          body: |
+            ## Install
+
+            Raspberry Pi fleet: set `slideshow_version: "${{ needs.prepare.outputs.version }}"` and its checksum
+            (below) in your inventory, see the [Ansible guide](https://github.com/${{ github.repository }}/blob/${{ needs.prepare.outputs.tag }}/ansible/README.md).
+
+            Docker: `ghcr.io/${{ github.repository }}-backend:${{ needs.prepare.outputs.version }}` and
+            `ghcr.io/${{ github.repository }}-frontend:${{ needs.prepare.outputs.version }}` (amd64 and arm64).
+
+            ## Changes
+            ${{ steps.notes.outputs.notes }}

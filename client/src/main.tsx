@@ -7,6 +7,10 @@ import DynamicDailyView from './components/dynamic_daily_view/dynamicDailyView'
 import { ServerStatusProvider } from '@/contexts/ServerStatusContext';
 import '@/styles/index.css'
 
+// Demo mode (GitHub Pages preview): Vite removes all of this from normal builds
+const isDemo = import.meta.env.VITE_DEMO_MODE === 'true'
+const DemoBar = isDemo ? lazy(() => import('./demo/DemoBar')) : null
+
 // The test page only exists in development builds: Vite drops this import and the route from production bundles
 const TestPage = import.meta.env.DEV ? lazy(() => import('./components/dynamic_daily_view/testPage')) : null
 
@@ -16,7 +20,8 @@ const TestPage = import.meta.env.DEV ? lazy(() => import('./components/dynamic_d
  */
 const Main = () => (
   <ServerStatusProvider>
-    <Router>
+    <Router basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+      {DemoBar && <Suspense fallback={null}><DemoBar /></Suspense>}
       <Routes>
         <Route path="/" element={<App />} />
         <Route path="/dynamic-view" element={<DynamicDailyView />} />
@@ -29,8 +34,13 @@ const Main = () => (
 )
 
 // Initialize React with StrictMode and render main component
-createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <Main />
-  </React.StrictMode>
-)
+const start = async () => {
+  if (isDemo) (await import('./demo')).installDemo()
+  createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <Main />
+    </React.StrictMode>
+  )
+}
+
+void start()

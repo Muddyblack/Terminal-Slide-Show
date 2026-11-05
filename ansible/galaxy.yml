@@ -1,7 +1,7 @@
 ---
 namespace: muddyblack
 name: terminal_slideshow
-version: 0.1.0
+version: 2.1.2
 readme: README.md
 authors:
   - Muddyblack

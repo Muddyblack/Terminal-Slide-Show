@@ -22,3 +22,6 @@ node_modules/
 
 # Ansible caches
 .ansible/
+
+# Release tarball output
+dist-release/

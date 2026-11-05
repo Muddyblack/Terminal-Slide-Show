@@ -20,6 +20,8 @@ Drop images and videos into a Google Drive folder, and your displays pick them u
 - **Kiosk ready**: fullscreen Chromium on a Raspberry Pi, or an MPV terminal mode with no desktop at all.
 - **Touch and swipe** navigation, automatic reconnects and health monitoring.
 
+**Live demo:** https://muddyblack.github.io/Terminal-Slide-Show/ (made-up data; switch weather and occasions in the bar at the bottom).
+
 ## How it works
 
 <img src="docs/architecture.svg" alt="Architecture: Google Drive to Node.js server to React client, shown in a kiosk browser or MPV" width="100%">
