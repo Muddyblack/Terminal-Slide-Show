@@ -10,6 +10,7 @@ license:
   - GPL-3.0-or-later
 repository: https://github.com/Muddyblack/Terminal-Slide-Show
 tags:
+  - linux
   - raspberry_pi
   - digital_signage
   - kiosk
