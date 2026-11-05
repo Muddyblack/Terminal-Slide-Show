@@ -282,6 +282,16 @@ app.get('/api/content', limiter, async (req, res) => {
  * @description Today's seasonal occasion (Advent, Easter, Tag der Deutschen Einheit, ...) or null.
  * @param {string} [req.query.date] - YYYY-MM-DD, to preview another day
  */
+/**
+ * Options for the occasion rules. The built-in occasions are German holidays with German
+ * texts, so they are off unless the language is German.
+ */
+const occasionOptions = () => ({
+    country: config.info.country,
+    ...config.occasions,
+    enabled: config.occasions.enabled && config.locale.language === 'de',
+});
+
 /** The day from a ?date=YYYY-MM-DD query, or today. */
 const dayFromQuery = (query) => {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(query.date || ''));
@@ -297,7 +307,7 @@ app.get('/api/theme', limiter, (req, res) => {
 });
 
 app.get('/api/occasion', limiter, (req, res) => {
-    res.json(getOccasion(dayFromQuery(req.query), { country: config.info.country, ...config.occasions }));
+    res.json(getOccasion(dayFromQuery(req.query), occasionOptions()));
 });
 
 /**
@@ -307,7 +317,7 @@ app.get('/api/occasion', limiter, (req, res) => {
  */
 app.get('/api/occasions', limiter, (req, res) => {
     const year = /^\d{4}$/.test(String(req.query.year)) ? Number(req.query.year) : new Date().getFullYear();
-    res.json(listOccasions(year, { country: config.info.country, ...config.occasions }));
+    res.json(listOccasions(year, occasionOptions()));
 });
 
 // External API Integration Routes
@@ -406,7 +416,7 @@ function fetchNasaApod() {
 
 /** Today's photo that fits the occasion of the day (Mauerfall, Halloween, ...), or null. */
 async function fetchOccasionPhoto(day) {
-    const occasion = getOccasion(day, { country: config.info.country, ...config.occasions });
+    const occasion = getOccasion(day, occasionOptions());
     if (!occasion) return null;
     const photo = await occasionPhotoIfReady(occasion.id, day);
     if (!photo) return null;

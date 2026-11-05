@@ -10,7 +10,7 @@ import React, { CSSProperties } from 'react';
 
 import '@/styles/animatedWeather.css';
 import { AnimatedWeatherProps } from '@/components/dynamic_daily_view/types';
-import { t, weatherUnits } from '@/i18n';
+import { t, weatherLabel, weatherUnits } from '@/i18n';
 import { describeWeather, WeatherState } from '@/components/dynamic_daily_view/weatherModel';
 
 type Tone = 'light' | 'gray' | 'dark' | 'back' | 'backdark';
@@ -179,7 +179,7 @@ function WeatherIcon({ state, night }: { state: WeatherState; night: boolean }) 
   const back: Tone = severe ? 'backdark' : 'back';
 
   return (
-    <svg viewBox="0 0 100 100" className="weather-icon" role="img" aria-label={state.label}>
+    <svg viewBox="0 0 100 100" className="weather-icon" role="img" aria-label={weatherLabel(state.label)}>
       <Defs />
       {state.kind === 'clear' && <Body x={50} y={50} r={night ? 19 : 20} stars={night} />}
 
@@ -257,7 +257,7 @@ const AnimatedWeather: React.FC<AnimatedWeatherProps> = ({
         <div className="temperature-container">
           <span className="temperature-text">{Math.round(temperature)}{units.temperature}</span>
         </div>
-        <span className="weather-label">{state.label}</span>
+        <span className="weather-label">{weatherLabel(state.label)}</span>
 
         <div className="weather-info-grid">
           <div className="weather-info-item">
