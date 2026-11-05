@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import fetch from 'node-fetch';
+import { config } from '../../config/config.js';
 import { cached } from '../utils/ttlCache.js';
 
 export const USER_AGENT = 'TerminalSlideShow/1.0 (https://github.com/Muddyblack/Terminal-Slide-Show)';
@@ -108,7 +109,7 @@ export function searchCenters(latitude, longitude, radiusKm) {
   return centers;
 }
 
-const cacheFile = (name) => path.join(process.cwd(), 'data', 'cache', `${name}.json`);
+const cacheFile = (name) => path.join(config.paths.cachePath, `${name}.json`);
 
 /** Last good photo list, kept on disk so a restart does not repeat a slow search. */
 export async function readDiskCache(name) {

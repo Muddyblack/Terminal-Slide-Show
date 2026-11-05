@@ -1,0 +1,87 @@
+---
+- name: Configure automatic updates
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "/etc/apt/apt.conf.d/{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - { src: 20auto-upgrades.j2, dest: 20auto-upgrades }
+    - { src: 52slideshow-updates.j2, dest: 52slideshow-updates }
+
+- name: Install the daily reboot timer
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - slideshow-reboot.service
+    - slideshow-reboot.timer
+  when: slideshow_daily_reboot | length > 0
+  notify: Reload systemd
+
+- name: Enable the daily reboot
+  ansible.builtin.systemd_service:
+    name: slideshow-reboot.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: slideshow_daily_reboot | length > 0
+
+- name: Remove the daily reboot when it is not wanted
+  ansible.builtin.systemd_service:
+    name: slideshow-reboot.timer
+    enabled: false
+    state: stopped
+  failed_when: false
+  when: slideshow_daily_reboot | length == 0
+
+- name: Make sure the watchdog directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: slideshow_watchdog | bool
+
+- name: Enable the hardware watchdog
+  ansible.builtin.copy:
+    content: |
+      # Managed by Ansible
+      [Manager]
+      RuntimeWatchdogSec=15
+      RebootWatchdogSec=2min
+      ShutdownWatchdogSec=2min
+    dest: /etc/systemd/system.conf.d/10-slideshow-watchdog.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: slideshow_watchdog | bool
+  notify: Reexecute systemd
+
+- name: Make sure the journald directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: slideshow_volatile_logs | bool
+
+- name: Keep logs in RAM
+  ansible.builtin.copy:
+    content: |
+      # Managed by Ansible
+      [Journal]
+      Storage=volatile
+      RuntimeMaxUse=50M
+    dest: /etc/systemd/journald.conf.d/10-slideshow.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: slideshow_volatile_logs | bool
+  notify: Restart journald

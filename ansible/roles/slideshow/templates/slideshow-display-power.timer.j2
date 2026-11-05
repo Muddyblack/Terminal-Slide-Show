@@ -1,0 +1,11 @@
+# Managed by Ansible
+[Unit]
+Description=Check the display schedule
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=30s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

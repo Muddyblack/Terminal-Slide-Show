@@ -1,0 +1,3 @@
+---
+slideshow_display_mode: browser
+slideshow_display_power_method: cec   # a TV that follows HDMI-CEC commands

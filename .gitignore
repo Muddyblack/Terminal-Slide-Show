@@ -19,3 +19,9 @@ node_modules/
 *.njsproj
 *.sln
 *.sw?
+
+# Ansible caches
+.ansible/
+
+# Release tarball output
+dist-release/

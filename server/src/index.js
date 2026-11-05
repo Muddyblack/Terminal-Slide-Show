@@ -1,20 +1,24 @@
-import { config } from '../config/config.js';
+import { config, publicConfig } from '../config/config.js';
 
 
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import fetch from 'node-fetch';
 import { GoogleDriveService } from './services/googleDriveService.js';
 import { SlideshowManager } from './services/slideshowManager.js';
 import { Logger } from './utils/logger.js';
+import { readLocalizedData } from './utils/localizedData.js';
+import { isOperatingNow } from './utils/schedule.js';
 import { cached } from './utils/ttlCache.js';
 import { buildQueue } from './services/contentService.js';
 import { occasionPhotoIfReady } from './services/occasionPhotoService.js';
 import { regionPhotosIfReady, pickDaily } from './services/regionPhotoService.js';
 import { getOccasion, listOccasions } from './utils/occasions.js';
 import { getTheme, listThemes } from './utils/themes.js';
+import { forecastUrl, hasCoordinates } from './utils/weather.js';
 import { createServer } from 'http';
 import { webSocketManager } from './services/webSocketManager.js';
 
@@ -65,6 +69,19 @@ async function initialize() {
     }
 }
 
+// Runtime frontend config
+/* ------------------------------------ */
+
+/**
+ * Per-device settings for the browser, loaded before the app starts.
+ * Never cached: a changed schedule must show up on the next page load.
+ */
+app.get('/config.js', (req, res) => {
+    res.type('application/javascript');
+    res.set('Cache-Control', 'no-cache');
+    res.send(`window.__SLIDESHOW_CONFIG__ = ${JSON.stringify(publicConfig)};`);
+});
+
 // Static File Serving
 /* ------------------------------------ */
 
@@ -81,11 +98,10 @@ const staticOptions = {
     etag: true
 };
 
-app.use(express.static(path.join(process.cwd(), 'client', 'public'), staticOptions));
-app.use(express.static(path.join(process.cwd(), 'dist'), staticOptions));
+app.use(express.static(config.paths.clientDist, staticOptions));
 // Media files can be replaced under the same name, so always revalidate.
 // express.static generates ETag/Last-Modified, which makes revalidation cheap (304).
-app.use('/media', express.static(path.join(process.cwd(), config.paths.downloadPath), {
+app.use('/media', express.static(path.resolve(process.cwd(), config.paths.downloadPath), {
     etag: true,
     lastModified: true,
     maxAge: 0,
@@ -154,8 +170,25 @@ app.get('/api/server-status', limiter, (req, res) => {
     }
 });
 
+/**
+ * @route GET /api/display-state
+ * @description Whether the display should be on right now according to the schedule.
+ * Polled by the device's power timer and by the MPV player.
+ */
+app.get('/api/display-state', (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json({ active: isOperatingNow(config.schedule) });
+});
+
 // Local Data API Routes
 /* ------------------------------------ */
+
+const bundledDataPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data');
+const readContent = (name) => readLocalizedData(name, {
+    dataPath: config.paths.dataPath,
+    language: config.locale.language,
+    bundledPath: bundledDataPath,
+});
 
 /**
  * @route GET /api/quotes
@@ -164,8 +197,8 @@ app.get('/api/server-status', limiter, (req, res) => {
 app.get('/api/quotes', limiter, async (req, res) => {
     logger.debug('Fetching random quote');
     try {
-        const quotesData = await fs.readFile(path.join(process.cwd(), 'data', 'quotes.json'), 'utf8');
-        const quotes = JSON.parse(quotesData).quotes;
+        const quotesData = await readContent('quotes.json');
+        const quotes = quotesData.quotes;
         const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
         res.json(randomQuote);
     } catch (error) {
@@ -181,8 +214,8 @@ app.get('/api/quotes', limiter, async (req, res) => {
 app.get('/api/facts', limiter, async (req, res) => {
     logger.debug('Fetching random fact');
     try {
-        const factsData = await fs.readFile(path.join(process.cwd(), 'data', 'facts.json'), 'utf8');
-        const facts = JSON.parse(factsData);
+        const factsData = await readContent('facts.json');
+        const facts = factsData;
         const randomFact = facts[Math.floor(Math.random() * facts.length)];
         res.json(randomFact);
     } catch (error) {
@@ -198,8 +231,8 @@ app.get('/api/facts', limiter, async (req, res) => {
 app.get('/api/greetings', limiter, async (req, res) => {
     logger.debug('Fetching greetings');
     try {
-        const greetingsData = await fs.readFile(path.join(process.cwd(), 'data', 'greetings.json'), 'utf8');
-        const greetings = JSON.parse(greetingsData);
+        const greetingsData = await readContent('greetings.json');
+        const greetings = greetingsData;
         res.json(greetings);
     } catch (error) {
         logger.error('Failed to fetch greetings:', error);
@@ -219,9 +252,15 @@ app.get('/api/content', limiter, async (req, res) => {
     const location = String(req.query.location || config.info.location);
     try {
         const body = await cached(`content:${location}`, 10 * 60 * 1000, async () => {
+            const quotesData = await readContent('quotes.json');
+            const quotes = [...quotesData.quotes].sort(() => Math.random() - 0.5).slice(0, 20);
+            // The rotating texts are German only; other languages keep the plain facts
+            if (config.locale.language !== 'de') return { items: [], quotes };
+
             let place = null;
             try {
-                const w = await cached(`weather:${location}`, 10 * 60 * 1000, () => fetchWeather(location));
+                // The weather lines are written for °C and km/h
+                const w = await weatherFor(location, 'metric');
                 if (w) {
                     place = { ...w.location, current: w.current_weather };
                 }
@@ -229,8 +268,7 @@ app.get('/api/content', limiter, async (req, res) => {
                 logger.warn('Content without weather:', error.message);
             }
             const items = await buildQueue({ location, date: new Date(), place, fetchFn: fetch });
-            const quotesData = JSON.parse(await fs.readFile(path.join(process.cwd(), 'data', 'quotes.json'), 'utf8'));
-            return { items, quotes: [...quotesData.quotes].sort(() => Math.random() - 0.5).slice(0, 20) };
+            return { items, quotes };
         });
         res.json(body);
     } catch (error) {
@@ -244,6 +282,16 @@ app.get('/api/content', limiter, async (req, res) => {
  * @description Today's seasonal occasion (Advent, Easter, Tag der Deutschen Einheit, ...) or null.
  * @param {string} [req.query.date] - YYYY-MM-DD, to preview another day
  */
+/**
+ * Options for the occasion rules. The built-in occasions are German holidays with German
+ * texts, so they are off unless the language is German.
+ */
+const occasionOptions = () => ({
+    country: config.info.country,
+    ...config.occasions,
+    enabled: config.occasions.enabled && config.locale.language === 'de',
+});
+
 /** The day from a ?date=YYYY-MM-DD query, or today. */
 const dayFromQuery = (query) => {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(query.date || ''));
@@ -252,14 +300,14 @@ const dayFromQuery = (query) => {
 
 /**
  * @route GET /api/theme
- * @description The look chosen with THEME in .env, as CSS variables for the daily view.
+ * @description The look chosen with THEME in .env (or "theme" in SLIDESHOW_CONFIG), as CSS variables for the daily view.
  */
 app.get('/api/theme', limiter, (req, res) => {
-    res.json({ ...getTheme(process.env.THEME), available: Object.keys(listThemes()) });
+    res.json({ ...getTheme(config.theme), available: Object.keys(listThemes()) });
 });
 
 app.get('/api/occasion', limiter, (req, res) => {
-    res.json(getOccasion(dayFromQuery(req.query), { country: config.info.country, ...config.occasions }));
+    res.json(getOccasion(dayFromQuery(req.query), occasionOptions()));
 });
 
 /**
@@ -269,7 +317,7 @@ app.get('/api/occasion', limiter, (req, res) => {
  */
 app.get('/api/occasions', limiter, (req, res) => {
     const year = /^\d{4}$/.test(String(req.query.year)) ? Number(req.query.year) : new Date().getFullYear();
-    res.json(listOccasions(year, { country: config.info.country, ...config.occasions }));
+    res.json(listOccasions(year, occasionOptions()));
 });
 
 // External API Integration Routes
@@ -368,7 +416,7 @@ function fetchNasaApod() {
 
 /** Today's photo that fits the occasion of the day (Mauerfall, Halloween, ...), or null. */
 async function fetchOccasionPhoto(day) {
-    const occasion = getOccasion(day, { country: config.info.country, ...config.occasions });
+    const occasion = getOccasion(day, occasionOptions());
     if (!occasion) return null;
     const photo = await occasionPhotoIfReady(occasion.id, day);
     if (!photo) return null;
@@ -430,19 +478,19 @@ app.get('/api/nasa-apod', limiter, async (req, res) => {
 
 /**
  * @route GET /api/weather
- * @description Fetch weather data for location
- * @param {string} req.query.location - Location to get weather for
+ * @description Current weather for the configured position (info.latitude/longitude,
+ * or looked up from info.location), in the configured units
  */
 app.get('/api/weather', limiter, async (req, res) => {
-    const location = req.query.location || config.info.location;
-    logger.debug(`Fetching weather for location: ${location}`);
+    const location = String(req.query.location || config.info.location);
+    logger.debug(`Fetching weather for ${location}`);
 
     try {
-        const enrichedResponse = await cached(`weather:${location}`, 10 * 60 * 1000, () => fetchWeather(location));
-        if (!enrichedResponse) {
+        const weather = await weatherFor(location);
+        if (!weather) {
             return res.status(404).json({ error: 'Location not found' });
         }
-        res.json(enrichedResponse);
+        res.json(weather);
     } catch (error) {
         logger.error('Failed to fetch weather:', error);
         res.status(500).json({ error: 'Failed to fetch weather data' });
@@ -450,62 +498,70 @@ app.get('/api/weather', limiter, async (req, res) => {
 });
 
 /**
- * Looks up a location and its current weather
- * @param {string} location
+ * Fetches the current weather for a configured position
+ * @param {Object} info - config.info
+ * @param {'metric'|'imperial'} units
  * @returns {Promise<Object|null>} Weather data, or null when the location is unknown
  */
-async function fetchWeather(location) {
-    const geoResponse = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1`
-    );
-    const geoData = await geoResponse.json();
+async function fetchWeather(info, units) {
+    let { latitude, longitude, elevation } = info;
+    let place = { name: info.location };
 
-    if (!geoData.results?.[0]) {
-        return null;
+    if (!hasCoordinates(info)) {
+        const geoResponse = await fetch(
+            `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(info.location)}&count=1`
+        );
+        const geoData = await geoResponse.json();
+        const result = geoData.results?.[0];
+        if (!result) return null;
+
+        ({ latitude, longitude } = result);
+        place = { name: result.name, country: result.country };
     }
 
-    const { latitude, longitude, timezone } = geoData.results[0];
-
-    const weatherResponse = await fetch(
-        `https://api.open-meteo.com/v1/forecast?` +
-        `latitude=${latitude}&longitude=${longitude}&` +
-        `current=temperature_2m,is_day,rain,showers,snowfall,` +
-        `weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,` +
-        `wind_gusts_10m&timezone=${encodeURIComponent(timezone)}&forecast_days=1`
-    );
-
+    const weatherResponse = await fetch(forecastUrl({ latitude, longitude, elevation, units }));
+    if (!weatherResponse.ok) throw new Error(`Open-Meteo responded with ${weatherResponse.status}`);
     const weatherData = await weatherResponse.json();
+    const { current } = weatherData;
 
-    const enrichedResponse = {
+    return {
         ...weatherData,
-        location: {
-            name: geoData.results[0].name,
-            timezone: timezone,
-            country: geoData.results[0].country,
-            latitude,
-            longitude
-        },
+        location: { ...place, timezone: weatherData.timezone, latitude, longitude },
+        units,
         current_weather: {
-            temperature: weatherData.current.temperature_2m,
-            weathercode: weatherData.current.weather_code,
-            is_day: weatherData.current.is_day,
-            time: weatherData.current.time,
-            windspeed: weatherData.current.wind_speed_10m,
-            winddirection: weatherData.current.wind_direction_10m,
-            wind_gusts: weatherData.current.wind_gusts_10m,
-            cloud_cover: weatherData.current.cloud_cover,
-            rain: weatherData.current.rain,
-            showers: weatherData.current.showers,
-            snowfall: weatherData.current.snowfall
+            temperature: current.temperature_2m,
+            weathercode: current.weather_code,
+            is_day: current.is_day,
+            time: current.time,
+            windspeed: current.wind_speed_10m,
+            winddirection: current.wind_direction_10m,
+            wind_gusts: current.wind_gusts_10m,
+            cloud_cover: current.cloud_cover,
+            rain: current.rain,
+            showers: current.showers,
+            snowfall: current.snowfall
         }
     };
+}
 
-    return enrichedResponse;
+/**
+ * Cached weather for a place name. The configured location uses the configured
+ * coordinates; any other name (test page preview) is looked up by name.
+ * @param {string} location
+ * @param {'metric'|'imperial'} [units]
+ */
+function weatherFor(location, units = config.locale.units) {
+    const { info } = config;
+    const target = location === info.location ? info : { location };
+    const key = `weather:${location}:${target.latitude}:${target.longitude}:${target.elevation}:${units}`;
+    return cached(key, 10 * 60 * 1000, () => fetchWeather(target, units));
 }
 
 // Serve index.html for all other routes (SPA support)
 app.get('*', limiter, (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'client', 'index.html'));
+    res.sendFile(path.join(config.paths.clientDist, 'index.html'), (err) => {
+        if (err) res.sendStatus(404); // Frontend is served elsewhere (e.g. nginx)
+    });
 });
 
 // Server Lifecycle
@@ -515,7 +571,7 @@ app.get('*', limiter, (req, res) => {
  * Start server and initialize services
  */
 initialize().then(() => {
-    server.listen(port, () => {
+    server.listen(port, host, () => {
         logger.info(`Backend running at http://${host}:${port}/`);
     });
 }).catch(error => {

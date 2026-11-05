@@ -1,0 +1,18 @@
+// Managed by Ansible
+Unattended-Upgrade::Origins-Pattern {
+{% if slideshow_updates == 'all' %}
+        "origin=*";
+{% else %}
+        // Debian security fixes
+        "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
+        // Raspberry Pi archive: Chromium, kernel and firmware
+        "origin=Raspberry Pi Foundation,codename=${distro_codename}";
+{% endif %}
+};
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+{% if slideshow_reboot_if_required | length > 0 %}
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-Time "{{ slideshow_reboot_if_required }}";
+{% else %}
+Unattended-Upgrade::Automatic-Reboot "false";
+{% endif %}
