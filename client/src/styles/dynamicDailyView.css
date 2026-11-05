@@ -277,10 +277,12 @@
 /* logo: bottom right */
 .brand-logo {
   right: 0;
-  height: clamp(36px, 3.8vw, 84px);
+  height: clamp(26px, 2.5vw, 56px);
+  /* same glass, a touch darker, so the gold does not sit on beige */
+  background: linear-gradient(145deg, rgba(10, 14, 26, 0.38), rgba(10, 14, 26, 0.26)), var(--background-image-weather-gradient);
   width: auto;
   box-sizing: content-box;
-  padding: 0.7vw 1.1vw;
+  padding: 0.55vw 0.9vw;
   border-left-width: 1px;
   border-top-left-radius: 1.5rem;
   pointer-events: none;
@@ -391,8 +393,8 @@
   }
 
   .brand-logo {
-    height: 30px;
-    padding: 6px 10px;
+    height: 20px;
+    padding: 5px 8px;
     border-top-left-radius: 12px;
   }
 
@@ -575,21 +577,25 @@
 }
 
 /* the theme tints the sky and the overlay on top of the photo */
-.daily-view[class*='theme-'] {
+.daily-view[class*='theme-'],
+.daily-view[data-skin] {
   --fill-light: color-mix(in srgb, var(--gold) 45%, #fff);
   background: linear-gradient(160deg, rgb(var(--tint-1)) 0%, rgb(var(--tint-2)) 55%, rgb(var(--tint-3)) 100%);
 }
 
-.daily-view[class*='theme-'] .background-overlay.night {
+.daily-view[class*='theme-'] .background-overlay.night,
+.daily-view[data-skin] .background-overlay.night {
   background: var(--scrim), linear-gradient(160deg, rgb(var(--tint-1) / .66), rgb(var(--tint-2) / .54), rgb(var(--tint-3) / .48));
 }
 
-.daily-view[class*='theme-'] .background-overlay.day {
+.daily-view[class*='theme-'] .background-overlay.day,
+.daily-view[data-skin] .background-overlay.day {
   background: var(--scrim), linear-gradient(160deg, rgb(var(--tint-1) / .55), rgb(var(--tint-2) / .44), rgb(var(--tint-3) / .38));
 }
 
 /* the occasion header needs its own shade on bright photos */
-.daily-view[class*='theme-'] .background-overlay {
+.daily-view[class*='theme-'] .background-overlay,
+.daily-view[data-skin] .background-overlay {
   --scrim: radial-gradient(ellipse 62% 72% at 20% 48%, rgba(6, 8, 18, 0.55), transparent 72%),
     radial-gradient(ellipse 55% 45% at 78% 74%, rgba(6, 8, 18, 0.5), transparent 70%);
 }

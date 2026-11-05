@@ -49,11 +49,26 @@ const DAY_NIGHT: Array<[DayNight, string]> = [['auto', '🔄 Auto'], ['day', '�
 const WEATHER: Array<[WeatherPreset, string]> = [
   ['live', '📡 Live'],
   ['clear', '☀️ Klar'],
-  ['cloudy', '⛅ Wolken'],
+  ['partly', '🌤️ Heiter'],
+  ['cloudy', '☁️ Bedeckt'],
+  ['drizzle', '🌦️ Niesel'],
+  ['rainLight', '🌧️ Regen leicht'],
   ['rain', '🌧️ Regen'],
-  ['thunder', '⛈️ Gewitter'],
+  ['rainHeavy', '🌧️ Regen stark'],
+  ['showers', '🌦️ Schauer'],
+  ['storm', '🌬️ Sturmböen'],
+  ['freezing', '🧊 Eisregen'],
+  ['thunder1', '🌩️ Gewitter 1'],
+  ['thunder2', '⛈️ Gewitter 2'],
+  ['thunder3', '⛈️ Gewitter 3'],
+  ['hail', '🌨️ Hagel'],
+  ['hailHeavy', '🌨️ Hagel schwer'],
+  ['snowLight', '❄️ Schnee leicht'],
   ['snow', '❄️ Schnee'],
+  ['snowHeavy', '❄️ Schnee stark'],
+  ['grains', '🌨️ Griesel'],
   ['fog', '🌫️ Nebel'],
+  ['rimeFog', '🌫️ Reifnebel'],
 ];
 
 const SOURCES: Array<[PictureSource, string, string]> = [
@@ -102,10 +117,30 @@ const Toggle = ({ checked, onChange, children }: { checked: boolean; onChange: (
 
 const PANEL_WIDTH = 380;
 
+/**
+ * Start values from the address, so a test case can be shared as a link:
+ * /test?weather=thunder3&light=night&date=2026-12-24&time=21:30&source=none
+ */
+function debugFromUrl(): DebugOptions {
+  const q = new window.URLSearchParams(window.location.search);
+  const weather = q.get('weather');
+  const light = q.get('light');
+  const source = q.get('source');
+  const date = q.get('date');
+  const time = /^\d{2}:\d{2}$/.test(q.get('time') ?? '') ? q.get('time') : '12:00';
+  return {
+    ...DEFAULT_DEBUG,
+    weather: WEATHER.some(([id]) => id === weather) ? (weather as WeatherPreset) : DEFAULT_DEBUG.weather,
+    dayNight: DAY_NIGHT.some(([id]) => id === light) ? (light as DayNight) : DEFAULT_DEBUG.dayNight,
+    source: SOURCES.some(([id]) => id === source) ? (source as PictureSource) : DEFAULT_DEBUG.source,
+    fakeNow: date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? `${date}T${time}` : '',
+  };
+}
+
 const TestPage = () => {
   const [open, setOpen] = useState(false);
   const [side, setSide] = useState<'left' | 'right'>('left');
-  const [debug, setDebug] = useState<DebugOptions>(DEFAULT_DEBUG);
+  const [debug, setDebug] = useState<DebugOptions>(debugFromUrl);
   const [placeInput, setPlaceInput] = useState('');
   const stageRef = useRef<HTMLDivElement>(null);
   const [viewportWidth, setViewportWidth] = useState(window.innerWidth);

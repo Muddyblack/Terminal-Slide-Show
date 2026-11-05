@@ -1,3 +1,4 @@
 *.json
 .env
 !occasions.example.json
+!themes.example.json

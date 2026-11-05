@@ -66,6 +66,143 @@
            transition-transform duration-500;
 }
 
+/* ---------- weather icon (animatedWeather.tsx) ---------- */
+
+.weather-icon {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 12vw;
+  overflow: visible;
+}
+
+.weather-label {
+  @apply text-sm text-white/85 text-center leading-tight -mt-1;
+  text-wrap: balance;
+}
+
+.weather-icon * {
+  transform-box: fill-box;
+}
+
+.wx-i-cloud {
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));
+  animation: wx-i-float 7s ease-in-out infinite;
+}
+
+.wx-i-sun {
+  transform-origin: center;
+  filter: drop-shadow(0 0 6px #FFD700) drop-shadow(0 0 14px rgba(255, 200, 0, 0.45));
+  animation: wx-i-pulse 2.6s ease-in-out infinite;
+}
+
+.wx-i-halo {
+  transform-origin: center;
+  animation: wx-i-breathe 5s ease-in-out infinite;
+}
+
+.wx-i-star {
+  transform-origin: center;
+  animation: wx-i-twinkle 3s ease-in-out infinite;
+}
+
+.wx-i-drop {
+  animation: wx-i-fall 0.7s linear infinite;
+}
+
+.wx-i-drop.drizzle {
+  animation-duration: 1.2s;
+}
+
+.wx-i-drop.grain {
+  animation-duration: 1s;
+}
+
+.wx-i-flake {
+  transform-origin: center;
+  animation: wx-i-snow 2.4s linear infinite;
+}
+
+.wx-i-hail {
+  animation: wx-i-hail 0.8s cubic-bezier(0.5, 0, 1, 1) infinite;
+}
+
+.wx-i-bolt {
+  opacity: 0;
+  filter: drop-shadow(0 0 4px #ffe680) drop-shadow(0 0 10px rgba(255, 220, 120, 0.6));
+  animation: wx-i-strike 3s linear infinite;
+}
+
+.wx-i-fog rect {
+  animation: wx-i-sway 6s ease-in-out infinite alternate;
+}
+
+@keyframes wx-i-float {
+  50% { transform: translateX(2.5px); }
+}
+
+@keyframes wx-i-pulse {
+  50% { transform: scale(1.08); }
+}
+
+@keyframes wx-i-breathe {
+  50% { transform: scale(1.1); opacity: 0.75; }
+}
+
+@keyframes wx-i-twinkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.2; transform: scale(0.5); }
+}
+
+@keyframes wx-i-fall {
+  0% { transform: translate(0, -4px); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { transform: translate(var(--dx, 0), 30px); opacity: 0; }
+}
+
+@keyframes wx-i-snow {
+  0% { transform: translate(0, -4px) rotate(0deg); opacity: 0; }
+  15% { opacity: 1; }
+  50% { transform: translate(calc(var(--dx, 0px) * 0.5 + 3px), 13px) rotate(90deg); }
+  85% { opacity: 1; }
+  100% { transform: translate(var(--dx, 0px), 30px) rotate(180deg); opacity: 0; }
+}
+
+@keyframes wx-i-hail {
+  0% { transform: translate(0, -4px); opacity: 0; }
+  10% { opacity: 1; }
+  70% { transform: translate(var(--dx, 0), 30px); }
+  82% { transform: translate(calc(var(--dx, 0px) + 2px), 25px); }
+  94% { transform: translate(calc(var(--dx, 0px) + 3px), 30px); opacity: 1; }
+  100% { transform: translate(calc(var(--dx, 0px) + 3px), 30px); opacity: 0; }
+}
+
+/* a strike, a short dark gap, a re-strike, then dark until the next one */
+@keyframes wx-i-strike {
+  0%, 84%, 100% { opacity: 0; }
+  85% { opacity: 1; }
+  87% { opacity: 0.15; }
+  89% { opacity: 1; }
+  93% { opacity: 0.6; }
+  96% { opacity: 0; }
+}
+
+@keyframes wx-i-sway {
+  from { transform: translateX(-3px); }
+  to { transform: translateX(4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weather-icon * {
+    animation: none !important;
+  }
+
+  .wx-i-bolt {
+    opacity: 1;
+  }
+}
+
 /* Keep SVG-specific animations */
 @keyframes temperature-pulse {
   0%, 100% { transform: scale(1); }

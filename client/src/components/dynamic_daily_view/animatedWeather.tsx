@@ -1,604 +1,220 @@
 /**
  * @module AnimatedWeather
- * @description Weather visualization component with animated SVG weather conditions
+ * @description The weather card (top right): an animated icon, the temperature, a short German
+ * description and the wind / cloud / precipitation numbers. The icon is built from the same
+ * weather model as the full-screen weather layer, so both always show the same weather.
  */
 
 import { Wind, ArrowUp, Cloud, CloudRain, CloudSnow } from 'lucide-react';
-import React, { JSX }  from 'react';
+import React, { CSSProperties } from 'react';
 
 import '@/styles/animatedWeather.css';
 import { AnimatedWeatherProps } from '@/components/dynamic_daily_view/types';
+import { describeWeather, WeatherState } from '@/components/dynamic_daily_view/weatherModel';
 
-/**
- * Determines which weather animation to display based on weather code and time of day
- * @param {number} code - Weather condition code (WMO standard)
- * @param {boolean} isNight - Whether it's nighttime
- * @returns {JSX.Element} Appropriate weather animation component
- */
-const getWeatherAnimation = (code: number, isNight: boolean): JSX.Element => {
-  switch (code) {
-    case 0:
-      return isNight ? <MoonAnimation /> : <SunnyAnimation />;
-    case 1:
-    case 2:
-    case 3:
-      return isNight ? <NightlyPartlyCloudyAnimation /> : <PartlyCloudyAnimation />;
-    case 45:
-    case 48:
-      return <FogAnimation />;
-    case 51:
-    case 53:
-    case 55:
-    case 56:
-    case 57:
-      return <DrizzleAnimation />;
-    case 61:
-    case 63:
-    case 65:
-    case 66:
-    case 67:
-      return <RainyAnimation />;
-    case 71:
-    case 73:
-    case 75:
-    case 77:
-      return <SnowyAnimation />;
-    case 80:
-    case 81:
-    case 82:
-      return <RainShowerAnimation />;
-    case 85:
-    case 86:
-      return <SnowShowerAnimation />;
-    case 95:
-      return <ThunderstormAnimation intensity="moderate" />;
-    case 96:
-      return <ThunderstormAnimation intensity="slight-hail" />;
-    case 99:
-      return <ThunderstormAnimation intensity="heavy-hail" />;
-    default:
-      return isNight ? <MoonAnimation /> : <SunnyAnimation />;
-  }
+type Tone = 'light' | 'gray' | 'dark' | 'back' | 'backdark';
+
+const css = (vars: Record<string, string | number>) => vars as CSSProperties;
+
+/* ---------- building blocks, all in a 100 x 100 box ---------- */
+
+const Defs = () => (
+  <defs>
+    <radialGradient id="wx-sun" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stopColor="#FFD700" />
+      <stop offset="1" stopColor="#FFA500" />
+    </radialGradient>
+    <radialGradient id="wx-moon" cx="40%" cy="35%" r="70%">
+      <stop offset="0" stopColor="#fffdf3" />
+      <stop offset="1" stopColor="#d8d2bd" />
+    </radialGradient>
+    <radialGradient id="wx-moon-halo">
+      <stop offset="0" stopColor="#e9f0ff" stopOpacity=".35" />
+      <stop offset="1" stopColor="#e9f0ff" stopOpacity="0" />
+    </radialGradient>
+    <radialGradient id="wx-hail" cx="38%" cy="35%" r="65%">
+      <stop offset="0" stopColor="#ffffff" />
+      <stop offset="1" stopColor="#a9cbe6" />
+    </radialGradient>
+    <linearGradient id="wx-bolt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stopColor="#fffbe0" />
+      <stop offset="1" stopColor="#ffd23f" />
+    </linearGradient>
+    {([
+      ['light', '#ffffff', '#d3dbe6'],
+      ['gray', '#e1e6ee', '#97a3b3'],
+      ['dark', '#8d96a5', '#424955'],
+      ['back', '#c3ccd9', '#8490a2'],
+      ['backdark', '#5f6775', '#2c3139'],
+    ] as const).map(([id, top, bottom]) => (
+      <linearGradient key={id} id={`wx-cloud-${id}`} gradientUnits="userSpaceOnUse" x1="0" y1="-21" x2="0" y2="13">
+        <stop offset="0" stopColor={top} />
+        <stop offset="1" stopColor={bottom} />
+      </linearGradient>
+    ))}
+    <clipPath id="wx-under-cloud">
+      <rect x="0" y="58" width="100" height="42" />
+    </clipPath>
+  </defs>
+);
+
+const CloudShape = ({ x, y, s, tone, drift = true }: { x: number; y: number; s: number; tone: Tone; drift?: boolean }) => (
+  <g transform={`translate(${x} ${y}) scale(${s})`}>
+    <g className={drift ? 'wx-i-cloud' : undefined} fill={`url(#wx-cloud-${tone})`}>
+      <circle cx="-14" cy="2" r="11" />
+      <circle cx="0" cy="-6" r="15" />
+      <circle cx="14" cy="0" r="12" />
+      <rect x="-25" y="0" width="51" height="13" rx="6.5" />
+    </g>
+  </g>
+);
+
+/** The sun as before: a glowing orb that pulses gently, no rays */
+const Sun = ({ x, y, r, faded = false }: { x: number; y: number; r: number; faded?: boolean }) => (
+  <circle cx={x} cy={y} r={r} fill="url(#wx-sun)" className="wx-i-sun" opacity={faded ? 0.55 : 1} />
+);
+
+const Moon = ({ x, y, r, stars = false, faded = false }: { x: number; y: number; r: number; stars?: boolean; faded?: boolean }) => (
+  <g opacity={faded ? 0.5 : 1}>
+    <circle cx={x} cy={y} r={r * 2} fill="url(#wx-moon-halo)" className="wx-i-halo" />
+    {/* crescent: the disc minus a slightly shifted disc */}
+    <mask id={`wx-moon-cut-${x}-${y}`}>
+      <rect width="100" height="100" fill="#fff" />
+      <circle cx={x + r * 0.55} cy={y - r * 0.35} r={r * 0.92} fill="#000" />
+    </mask>
+    <circle cx={x} cy={y} r={r} fill="url(#wx-moon)" mask={`url(#wx-moon-cut-${x}-${y})`} />
+    {stars && [[20, 24, 2.2], [78, 20, 1.6], [82, 70, 1.9], [18, 72, 1.4]].map(([sx, sy, sr], i) => (
+      <path
+        key={i}
+        className="wx-i-star"
+        style={{ animationDelay: `${i * 0.7}s` }}
+        d={`M${sx} ${sy - sr * 2} Q${sx} ${sy} ${sx + sr * 2} ${sy} Q${sx} ${sy} ${sx} ${sy + sr * 2} Q${sx} ${sy} ${sx - sr * 2} ${sy} Q${sx} ${sy} ${sx} ${sy - sr * 2}Z`}
+        fill="#fff"
+      />
+    ))}
+  </g>
+);
+
+/** Spots under the cloud where precipitation starts, spread but not in a grid */
+const SPOTS = [34, 58, 46, 70, 40, 64, 52, 30, 76, 44, 60, 36];
+
+const Precipitation = ({ state }: { state: WeatherState }) => {
+  const slant = state.windX * 6;
+  const n = [0, 4, 6, 9][state.level];
+  return (
+    <g clipPath="url(#wx-under-cloud)">
+      {state.precip === 'rain' && SPOTS.slice(0, state.hail ? Math.max(3, n - 3) : n).map((x, i) => (
+        <line
+          key={`r${i}`}
+          className="wx-i-drop"
+          style={css({ animationDelay: `${(i * 0.37) % 0.9}s`, '--dx': `${slant}px`, animationDuration: `${0.75 - state.level * 0.08}s` })}
+          x1={x} y1={58 + (i % 3) * 3} x2={x - slant * 0.45} y2={58 + (i % 3) * 3 + 7 + state.level * 2}
+          stroke="#8fc6f5" strokeWidth={1.6 + state.level * 0.3} strokeLinecap="round"
+        />
+      ))}
+      {state.precip === 'drizzle' && SPOTS.slice(0, n + 2).map((x, i) => (
+        <line
+          key={`d${i}`}
+          className="wx-i-drop drizzle"
+          style={css({ animationDelay: `${(i * 0.29) % 1.2}s`, '--dx': `${slant}px` })}
+          x1={x} y1={60 + (i % 4) * 2} x2={x - slant * 0.2} y2={63 + (i % 4) * 2}
+          stroke="#b8d6ef" strokeWidth="1.4" strokeLinecap="round"
+        />
+      ))}
+      {(state.precip === 'snow' || (state.freezing && state.precip !== 'none')) && SPOTS.slice(0, state.freezing ? 3 : n).map((x, i) => (
+        <g
+          key={`s${i}`}
+          className="wx-i-flake"
+          style={css({ animationDelay: `${(i * 0.53) % 2.4}s`, '--dx': `${slant}px` })}
+          stroke={state.freezing ? '#cfeaff' : '#ffffff'} strokeWidth="1.1" strokeLinecap="round"
+        >
+          {[0, 60, 120].map((a) => (
+            <line key={a} x1={x - 3.2} y1={62} x2={x + 3.2} y2={62} transform={`rotate(${a} ${x} 62)`} />
+          ))}
+        </g>
+      ))}
+      {state.precip === 'grains' && SPOTS.slice(0, 8).map((x, i) => (
+        <circle key={`g${i}`} className="wx-i-drop grain" style={css({ animationDelay: `${(i * 0.31) % 1}s`, '--dx': `${slant}px` })} cx={x} cy={61} r="1.3" fill="#fff" />
+      ))}
+      {state.hail > 0 && SPOTS.slice(0, state.hail === 2 ? 7 : 4).map((x, i) => (
+        <circle
+          key={`h${i}`}
+          className="wx-i-hail"
+          style={css({ animationDelay: `${(i * 0.23) % 0.8}s`, '--dx': `${slant}px` })}
+          cx={x + 3} cy={60} r={state.hail === 2 ? 3 : 2.3}
+          fill="url(#wx-hail)" stroke="#e8f4ff" strokeWidth=".5"
+        />
+      ))}
+    </g>
+  );
 };
 
-/**
- * Moon animation component with gradient and shadow effects
- * @returns {JSX.Element} Animated moon SVG
- */
-const MoonAnimation = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full">
-    <defs>
-      <radialGradient id="moon-gradient" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" style={{ stopColor: "#FFFFFF", stopOpacity: 1 }} />
-        <stop offset="100%" style={{ stopColor: "#E1E1E1", stopOpacity: 1 }} />
-      </radialGradient>
-      <radialGradient id="moon-shadow" cx="30%" cy="30%" r="70%">
-        <stop offset="0%" style={{ stopColor: "#C4C4C4", stopOpacity: 0 }} />
-        <stop offset="100%" style={{ stopColor: "#A0A0A0", stopOpacity: 0.3 }} />
-      </radialGradient>
-    </defs>
-    <circle
-      cx="50"
-      cy="50"
-      r="20"
-      fill="url(#moon-gradient)"
-      className="moon-circle"
-    />
-    <circle
-      cx="50"
-      cy="50"
-      r="20"
-      fill="url(#moon-shadow)"
-      className="moon-shadow"
-    />
-    <style>{`
-      .moon-circle {
-        animation: moon-glow 4s infinite;
-        filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.7));
-      }
-      .moon-shadow {
-        animation: moon-phase 8s infinite;
-      }
-      @keyframes moon-glow {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-      }
-      @keyframes moon-phase {
-        0%, 100% { transform: translateX(2px); }
-        50% { transform: translateX(-2px); }
-      }
-    `}</style>
-  </svg>
-);
-
-/**
- * Sun animation component with pulsing rays
- * @returns {JSX.Element} Animated sun SVG
- */
-const SunnyAnimation = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full">
-    <defs>
-      <radialGradient id="sun-gradient" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" style={{ stopColor: "#FFD700", stopOpacity: 1 }} />
-        <stop offset="100%" style={{ stopColor: "#FFA500", stopOpacity: 1 }} />
-      </radialGradient>
-      <radialGradient id="sun-corona-gradient" cx="50%" cy="50%" r="60%">
-        <stop offset="0%" style={{ stopColor: "rgba(255,215,0,0.6)", stopOpacity: 1 }} />
-        <stop offset="100%" style={{ stopColor: "rgba(255,215,0,0)", stopOpacity: 0 }} />
-      </radialGradient>
-    </defs>
-    {/* Sun core */}
-    <circle
-      cx="50"
-      cy="50"
-      r="20"
-      fill="url(#sun-gradient)"
-      className="sunny-circle"
-    />
-
-    {/* Removed sun rays for a realistic flare */}
-    <style>{`
-      .sunny-circle {
-        animation: pulse 2s infinite;
-        filter: drop-shadow(0 0 10px #FFD700);
-      }
-
-      @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.1); }
-      }
-    `}</style>
-  </svg>
-);
-
-/**
- * Cloud animation component with floating effect
- * @returns {JSX.Element} Animated cloud SVG
- */
-const CloudyAnimation = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full">
-    <defs>
-      <linearGradient id="cloud-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" style={{ stopColor: "#E0E0E0", stopOpacity: 1 }} />
-        <stop offset="100%" style={{ stopColor: "#B0B0B0", stopOpacity: 1 }} />
-      </linearGradient>
-      <filter id="cloud-shadow">
-        <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
-        <feOffset dx="0" dy="1" result="offsetblur" />
-        <feComponentTransfer>
-          <feFuncA type="linear" slope="0.3" />
-        </feComponentTransfer>
-        <feMerge>
-          <feMergeNode />
-          <feMergeNode in="SourceGraphic" />
-        </feMerge>
-      </filter>
-    </defs>
-    
-    {/* Main cloud body */}
-    <g className="cloud-group" filter="url(#cloud-shadow)">
-      {/* Center puff */}
-      <circle cx="50" cy="50" r="18" fill="url(#cloud-gradient)" />
-      
-      {/* Left puffs */}
-      <circle cx="35" cy="50" r="15" fill="url(#cloud-gradient)" />
-      <circle cx="25" cy="53" r="12" fill="url(#cloud-gradient)" />
-      
-      {/* Right puffs */}
-      <circle cx="65" cy="50" r="15" fill="url(#cloud-gradient)" />
-      <circle cx="75" cy="53" r="12" fill="url(#cloud-gradient)" />
-      
-      {/* Top puffs */}
-      <circle cx="43" cy="40" r="14" fill="url(#cloud-gradient)" />
-      <circle cx="57" cy="40" r="14" fill="url(#cloud-gradient)" />
-      
-      {/* Bottom fill */}
-      <path
-        d="M25,53 Q37,60 50,60 Q63,60 75,53 Q75,65 50,65 Q25,65 25,53"
-        fill="url(#cloud-gradient)"
-      />
-    </g>
-
-    <style>{`
-      .cloud-group {
-        animation: float 6s ease-in-out infinite;
-      }
-      
-      @keyframes float {
-        0% { transform: translate(0, 0) scale(1); }
-        25% { transform: translate(2px, -2px) scale(1.02); }
-        50% { transform: translate(0, 0) scale(1); }
-        75% { transform: translate(-2px, -2px) scale(0.98); }
-        100% { transform: translate(0, 0) scale(1); }
-      }
-    `}</style>
-  </svg>
-);
-
-
-/**
- * Night cloud animation component with moon and cloud
- * @returns {JSX.Element} Animated night cloud SVG
- */
-const NightlyPartlyCloudyAnimation = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full">
-    <defs>
-      <radialGradient id="night-moon-gradient" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" style={{ stopColor: "#FFFFFF", stopOpacity: 1 }} />
-        <stop offset="100%" style={{ stopColor: "#E1E1E1", stopOpacity: 1 }} />
-      </radialGradient>
-      <linearGradient id="night-cloud-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" style={{ stopColor: "#424242", stopOpacity: 1 }} />
-        <stop offset="100%" style={{ stopColor: "#303030", stopOpacity: 1 }} />
-      </linearGradient>
-    </defs>
-    <circle
-      cx="35"
-      cy="40"
-      r="15"
-      fill="url(#night-moon-gradient)"
-      className="night-moon"
-    />
+const Bolt = ({ level }: { level: number }) => (
+  <g>
     <path
-      d="M45,50 A15,15 0 0,1 75,50 A15,15 0 0,1 60,65 L50,65 A15,15 0 0,1 45,50"
-      fill="url(#night-cloud-gradient)"
-      className="night-cloud"
+      className="wx-i-bolt"
+      style={{ animationDuration: `${[0, 5, 3.2, 2.1][level]}s` }}
+      d="M56 54 L44 74 H52 L46 94 L65 68 H56 L62 54 Z"
+      fill="url(#wx-bolt)"
     />
-    <style>{`
-      .night-moon {
-        animation: moon-pulse 4s infinite;
-        filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
-      }
-      .night-cloud {
-        animation: cloud-float 3s ease-in-out infinite;
-        filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.3));
-      }
-      @keyframes moon-pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-      }
-      @keyframes cloud-float {
-        0%, 100% { transform: translateX(0); }
-        50% { transform: translateX(5px); }
-      }
-    `}</style>
-  </svg>
+    {level === 3 && (
+      <path className="wx-i-bolt" style={{ animationDuration: '2.6s', animationDelay: '-1.2s' }} d="M36 56 L29 68 H34 L30 80 L42 64 H36 L40 56 Z" fill="url(#wx-bolt)" />
+    )}
+  </g>
 );
 
-/**
- * Rain animation component with falling droplets
- * @returns {JSX.Element} Animated rain SVG
- */
-const RainyAnimation = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full">
-    <CloudyAnimation />
-    {[...Array(5)].map((_, i) => (
-      <line
-        key={i}
-        x1={30 + i * 10}
-        y1="70"
-        x2={25 + i * 10}
-        y2="90"
-        stroke="#4FC3F7"
-        strokeWidth="2"
-        className="rain-drop"
-        style={{ animationDelay: `${i * 0.2}s` }}
-      />
+const FogBars = () => (
+  <g className="wx-i-fog" fill="#e6ebf1">
+    {[[24, 46, 52], [16, 55, 62], [26, 64, 50], [20, 73, 58], [30, 82, 40]].map(([x, y, w], i) => (
+      <rect key={i} x={x} y={y} width={w} height="4.2" rx="2.1" opacity={0.92 - i * 0.1} style={{ animationDelay: `${-i * 1.7}s` }} />
     ))}
-    <style>{`
-      .rain-drop {
-        animation: rain 1.5s linear infinite;
-        filter: drop-shadow(0 0 5px #4FC3F7);
-      }
-      @keyframes rain {
-        0% { transform: translateY(-10px); opacity: 0; }
-        50% { opacity: 1; }
-        100% { transform: translateY(10px); opacity: 0; }
-      }
-    `}</style>
-  </svg>
+  </g>
 );
 
-/**
- * Snow animation component with falling snowflakes
- * @returns {JSX.Element} Animated snow SVG
- */
-const SnowyAnimation = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full">
-    <CloudyAnimation />
-    {[...Array(5)].map((_, i) => (
-      <circle
-        key={i}
-        cx={30 + i * 10}
-        cy="75"
-        r="2"
-        fill="white"
-        className="snow-flake"
-        style={{ animationDelay: `${i * 0.3}s` }}
-      />
-    ))}
-    <style>{`
-      .snow-flake {
-        animation: snow 2s linear infinite;
-        filter: drop-shadow(0 0 5px white);
-      }
-      @keyframes snow {
-        0% { transform: translateY(-10px) rotate(0deg); opacity: 0; }
-        50% { opacity: 1; }
-        100% { transform: translateY(10px) rotate(360deg); opacity: 0; }
-      }
-    `}</style>
-  </svg>
-);
+function WeatherIcon({ state, night }: { state: WeatherState; night: boolean }) {
+  const Body = night ? Moon : Sun;
+  const severe = state.kind === 'thunder' || (state.kind === 'rain' && state.level === 3);
+  const front: Tone = severe ? 'dark' : state.kind === 'rain' || state.kind === 'drizzle' ? 'gray' : 'light';
+  const back: Tone = severe ? 'backdark' : 'back';
 
-/**
- * Thunderstorm animation component with lightning effects
- * @returns {JSX.Element} Animated thunderstorm SVG
- */
-const ThunderstormAnimation = ({ intensity = "moderate" }: { intensity?: "moderate" | "slight-hail" | "heavy-hail" }) => (
-  <svg viewBox="0 0 100 100" className="w-full h-full">
-    <defs>
-      <linearGradient id="storm-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" style={{ stopColor: "#4A4A4A", stopOpacity: 1 }} />
-        <stop offset="100%" style={{ stopColor: "#1A1A1A", stopOpacity: 1 }} />
-      </linearGradient>
-      <filter id="glow">
-        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-        <feMerge>
-          <feMergeNode in="coloredBlur"/>
-          <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
-    </defs>
-    
-    <CloudyAnimation />
-    
-    {/* Lightning bolts */}
-    {[...Array(intensity === "heavy-hail" ? 4 : intensity === "slight-hail" ? 3 : 2)].map((_, i) => (
-      <path
-        key={i}
-        d={`M${45 + i * 10},${65 + i * 5} L${55 + i * 10},${75 + i * 5} L${45 + i * 10},${85 + i * 5} L${55 + i * 10},${95 + i * 5}`}
-        stroke={intensity.includes("hail") ? "#FFFFFF" : "#FFD700"}
-        strokeWidth={intensity === "heavy-hail" ? 4 : 3}
-        fill="none"
-        className={`lightning lightning-${i}`}
-        filter="url(#glow)"
-      />
-    ))}
-    
-    {/* Hail particles for hail variants */}
-    {intensity.includes("hail") && [...Array(intensity === "heavy-hail" ? 8 : 5)].map((_, i) => (
-      <circle
-        key={`hail-${i}`}
-        cx={25 + i * (intensity === "heavy-hail" ? 7 : 10)}
-        cy={75}
-        r={intensity === "heavy-hail" ? 3 : 2}
-        fill="#A5F3FC"
-        className="hail"
-        style={{ animationDelay: `${i * 0.2}s` }}
-      />
-    ))}
-    
-    <style>{`
-      .lightning {
-        animation: multi-lightning ${intensity === "heavy-hail" ? 1.5 : 2}s infinite;
-        filter: drop-shadow(0 0 ${intensity === "heavy-hail" ? 15 : 10}px ${intensity.includes("hail") ? "#FFFFFF" : "#FFD700"});
-      }
-      .lightning-0 { animation-delay: 0s; }
-      .lightning-1 { animation-delay: 0.5s; }
-      .lightning-2 { animation-delay: 1s; }
-      .lightning-3 { animation-delay: 0.75s; }
-      
-      @keyframes multi-lightning {
-        0%, ${intensity === "heavy-hail" ? "85" : "90"}%, 100% { opacity: 0; }
-        ${intensity === "heavy-hail" ? "87" : "92"}%, ${intensity === "heavy-hail" ? "89" : "95"}% { opacity: 1; }
-      }
-      
-      .hail {
-        animation: hail-fall 1s linear infinite;
-      }
-      
-      @keyframes hail-fall {
-        0% { transform: translateY(-15px); opacity: 0; }
-        50% { opacity: 1; }
-        100% { transform: translateY(15px); opacity: 0; }
-      }
-    `}</style>
-  </svg>
-);
+  return (
+    <svg viewBox="0 0 100 100" className="weather-icon" role="img" aria-label={state.label}>
+      <Defs />
+      {state.kind === 'clear' && <Body x={50} y={50} r={night ? 19 : 20} stars={night} />}
 
-/**
- * Partly cloudy animation component with sun and cloud
- * @returns {JSX.Element} Animated partly cloudy SVG
- */
-const PartlyCloudyAnimation = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full">
-    <defs>
-      <radialGradient id="partly-cloudy-sun-gradient" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" style={{ stopColor: "#FFD700", stopOpacity: 1 }} />
-        <stop offset="100%" style={{ stopColor: "#FFA500", stopOpacity: 1 }} />
-      </radialGradient>
-      <linearGradient id="partly-cloudy-cloud-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" style={{ stopColor: "#E0E0E0", stopOpacity: 1 }} />
-        <stop offset="100%" style={{ stopColor: "#B0B0B0", stopOpacity: 1 }} />
-      </linearGradient>
-    </defs>
-    <circle
-      cx="35"
-      cy="40"
-      r="15"
-      fill="url(#partly-cloudy-sun-gradient)"
-      className="partly-cloudy-sun"
-    />
-    <path
-      d="M45,50 A15,15 0 0,1 75,50 A15,15 0 0,1 60,65 L50,65 A15,15 0 0,1 45,50"
-      fill="url(#partly-cloudy-cloud-gradient)"
-      className="partly-cloudy-cloud"
-    />
-    <style>{`
-      .partly-cloudy-sun {
-        animation: sun-pulse 2s infinite;
-        filter: drop-shadow(0 0 10px #FFD700);
-      }
-      .partly-cloudy-cloud {
-        animation: cloud-float 3s ease-in-out infinite;
-        filter: drop-shadow(0 0 10px #B0B0B0);
-      }
-      @keyframes sun-pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.1); }
-      }
-      @keyframes cloud-float {
-        0%, 100% { transform: translateX(0); }
-        50% { transform: translateX(5px); }
-      }
-    `}</style>
-  </svg>
-);
+      {state.kind === 'partly' && (
+        <>
+          <Body x={38} y={38} r={state.level === 1 ? 15 : 13} stars={night} />
+          <CloudShape x={58} y={58} s={state.level === 1 ? 0.9 : 1.1} tone="light" />
+        </>
+      )}
 
-/**
- * Fog animation component with drifting fog layers
- * @returns {JSX.Element} Animated fog SVG
- */
-const FogAnimation = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full">
-    <defs>
-      <linearGradient id="fog-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" style={{ stopColor: "#CCCCCC", stopOpacity: 0.2 }} />
-        <stop offset="50%" style={{ stopColor: "#FFFFFF", stopOpacity: 0.5 }} />
-        <stop offset="100%" style={{ stopColor: "#CCCCCC", stopOpacity: 0.2 }} />
-      </linearGradient>
-    </defs>
-    {[...Array(5)].map((_, i) => (
-      <rect
-        key={i}
-        x="10"
-        y={35 + i * 8}
-        width="80"
-        height="3"
-        fill="url(#fog-gradient)"
-        className="fog-layer"
-        style={{ animationDelay: `${i * 0.5}s` }}
-      />
-    ))}
-    <style>{`
-      .fog-layer {
-        animation: fog-drift 8s linear infinite;
-        filter: blur(2px);
-      }
-      @keyframes fog-drift {
-        0% { transform: translateX(-20px); opacity: 0.3; }
-        50% { opacity: 0.8; }
-        100% { transform: translateX(20px); opacity: 0.3; }
-      }
-    `}</style>
-  </svg>
-);
+      {state.kind === 'overcast' && (
+        <>
+          <CloudShape x={38} y={44} s={0.95} tone="back" />
+          <CloudShape x={58} y={56} s={1.15} tone="light" />
+        </>
+      )}
 
-/**
- * Drizzle animation component with light rain droplets
- * @returns {JSX.Element} Animated drizzle SVG
- */
-const DrizzleAnimation = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full">
-    <CloudyAnimation />
-    {[...Array(8)].map((_, i) => (
-      <line
-        key={i}
-        x1={20 + i * 8}
-        y1="60"
-        x2={18 + i * 8}
-        y2="70"
-        stroke="#B0C4DE"
-        strokeWidth="1"
-        className="drizzle-drop"
-        style={{ animationDelay: `${i * 0.15}s` }}
-      />
-    ))}
-    <style>{`
-      .drizzle-drop {
-        animation: drizzle 1s linear infinite;
-        filter: drop-shadow(0 0 2px #B0C4DE);
-      }
-      @keyframes drizzle {
-        0% { transform: translateY(-5px); opacity: 0; }
-        50% { opacity: 1; }
-        100% { transform: translateY(5px); opacity: 0; }
-      }
-    `}</style>
-  </svg>
-);
+      {state.kind === 'fog' && (
+        <>
+          <Body x={50} y={40} r={15} faded />
+          <FogBars />
+        </>
+      )}
 
-/**
- * Rain shower animation component with heavy rain droplets
- * @returns {JSX.Element} Animated rain shower SVG
- */
-const RainShowerAnimation = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full">
-    <CloudyAnimation />
-    {[...Array(12)].map((_, i) => (
-      <line
-        key={i}
-        x1={15 + i * 6}
-        y1="65"
-        x2={12 + i * 6}
-        y2="85"
-        stroke="#4FC3F7"
-        strokeWidth="2"
-        className="shower-drop"
-        style={{ animationDelay: `${i * 0.1}s` }}
-      />
-    ))}
-    <style>{`
-      .shower-drop {
-        animation: shower 0.8s linear infinite;
-        filter: drop-shadow(0 0 3px #4FC3F7);
-      }
-      @keyframes shower {
-        0% { transform: translateY(-10px); opacity: 0; }
-        50% { opacity: 1; }
-        100% { transform: translateY(10px); opacity: 0; }
-      }
-    `}</style>
-  </svg>
-);
-
-/**
- * Snow shower animation component with falling snowflakes
- * @returns {JSX.Element} Animated snow shower SVG
- */
-const SnowShowerAnimation = () => (
-  <svg viewBox="0 0 100 100" className="w-full h-full">
-    <CloudyAnimation />
-    {[...Array(8)].map((_, i) => (
-      <g key={i} className="snow-shower-flake" style={{ animationDelay: `${i * 0.2}s` }}>
-        <circle cx={25 + i * 7} cy="75" r="2" fill="white" />
-        {[...Array(6)].map((_, j) => (
-          <line
-            key={j}
-            x1={25 + i * 7}
-            y1="75"
-            x2={25 + i * 7 + Math.cos(j * Math.PI / 3) * 4}
-            y2={75 + Math.sin(j * Math.PI / 3) * 4}
-            stroke="white"
-            strokeWidth="1"
-          />
-        ))}
-      </g>
-    ))}
-    <style>{`
-      .snow-shower-flake {
-        animation: snow-shower 2s linear infinite;
-        filter: drop-shadow(0 0 2px white);
-      }
-      @keyframes snow-shower {
-        0% { transform: translateY(-15px) rotate(0deg); opacity: 0; }
-        50% { opacity: 1; }
-        100% { transform: translateY(15px) rotate(180deg); opacity: 0; }
-      }
-    `}</style>
-  </svg>
-);
+      {state.precip !== 'none' && (
+        <>
+          {state.showers && <Body x={30} y={26} r={11} />}
+          <CloudShape x={38} y={34} s={0.85} tone={back} />
+          <Precipitation state={state} />
+          {state.thunder > 0 && <Bolt level={state.thunder} />}
+          <CloudShape x={56} y={44} s={1.15} tone={front} />
+        </>
+      )}
+    </svg>
+  );
+}
 
 /**
  * Main weather display component
@@ -606,69 +222,57 @@ const SnowShowerAnimation = () => (
  * @param {AnimatedWeatherProps} props - Component properties
  * @returns {JSX.Element} Weather display with animation and metrics
  */
-const AnimatedWeather: React.FC<AnimatedWeatherProps> = ({ 
-  weatherCode, 
+const AnimatedWeather: React.FC<AnimatedWeatherProps> = ({
+  weatherCode,
   temperature,
-  windSpeed, 
+  windSpeed,
   windDirection,
   cloud_cover,
   rain,
   showers,
   snowfall,
-  is_day
+  is_day,
+  wind_gusts,
 }) => {
   const isNight = !is_day;
+  const state = describeWeather({ code: weatherCode, rain, showers, snowfall, windspeed: windSpeed, winddirection: windDirection, gusts: wind_gusts });
   const totalPrecipitation = rain + showers + snowfall;
 
-  const getWeatherIcon = () => {
-    if (snowfall > 0) return <CloudSnow className="info-icon" />;
-    if (rain > 0 || showers > 0) return <CloudRain className="info-icon" />;
-    return null;
-  };
+  const precipIcon = snowfall > 0 ? <CloudSnow className="info-icon" /> : <CloudRain className="info-icon" />;
+  const precipText = [
+    rain > 0 && `Regen ${rain} mm`,
+    showers > 0 && `Schauer ${showers} mm`,
+    snowfall > 0 && `Schnee ${snowfall} cm`,
+  ].filter(Boolean).join(' · ');
 
   return (
-    <div className={`weather-badge ${isNight ? 'bg-opacity-80' : 'bg-opacity-90'}`}>
+    <div className={`weather-badge wx-card-${state.kind}${isNight ? ' bg-opacity-80' : ' bg-opacity-90'}`}>
       <div className="flex flex-col items-center gap-2">
         <div className="w-full">
-          {getWeatherAnimation(weatherCode, isNight)}
+          <WeatherIcon state={state} night={isNight} />
         </div>
-        
+
         <div className="temperature-container">
-          <span className="temperature-text">
-            {Math.round(temperature)}°C
-          </span>
+          <span className="temperature-text">{Math.round(temperature)}°C</span>
         </div>
+        <span className="weather-label">{state.label}</span>
 
         <div className="weather-info-grid">
-          {/* Wind Information */}
           <div className="weather-info-item">
             <Wind className="info-icon" />
-            <span className="info-value">
-              {windSpeed} km/h
-            </span>
-            <ArrowUp
-              className="wind-direction-arrow w-3 h-3"
-              style={{ transform: `rotate(${windDirection}deg)` }}
-            />
+            <span className="info-value">{Math.round(windSpeed)} km/h</span>
+            <ArrowUp className="wind-direction-arrow w-3 h-3" style={{ transform: `rotate(${windDirection}deg)` }} />
           </div>
 
-          {/* Cloud Cover */}
           <div className="weather-info-item">
             <Cloud className="info-icon" />
-            <span className="info-value">
-              {cloud_cover}%
-            </span>
+            <span className="info-value">{cloud_cover}%</span>
           </div>
 
-          {/* Precipitation Info (if any) */}
           {totalPrecipitation > 0 && (
             <div className="weather-info-item col-span-2">
-              {getWeatherIcon()}
-              <span className="info-value">
-                {rain > 0 && `Rain ${rain}mm`}
-                {showers > 0 && `Showers ${showers}mm`}
-                {snowfall > 0 && `Snow ${snowfall}cm`}
-              </span>
+              {precipIcon}
+              <span className="info-value">{precipText}</span>
             </div>
           )}
         </div>

@@ -1,12 +1,14 @@
 import { frontendConfig } from '@config/frontend.config';
 import { MapPin, Camera } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type CSSProperties } from 'react';
 
 import '@/styles/dynamicDailyView.css';
 import BrandLogo from '@/components/brandLogo';
 import OccasionArt from '@/components/dynamic_daily_view/occasionArt';
 import AnimatedWeather from '@/components/dynamic_daily_view/animatedWeather';
-import OccasionScene, { isSnowCode } from '@/components/dynamic_daily_view/flyers';
+import OccasionScene from '@/components/dynamic_daily_view/flyers';
+import { describeWeather } from '@/components/dynamic_daily_view/weatherModel';
+import WeatherScene from '@/components/dynamic_daily_view/weatherScene';
 import { DebugOptions, applyWeatherDebug } from '@/components/dynamic_daily_view/debugOptions';
 import { QuoteType, WeatherType, NasaImageType, GreetingsType, OccasionType, ContentType } from '@/components/dynamic_daily_view/types';
 import { useServerStatus } from '@/contexts/ServerStatusContext';
@@ -40,13 +42,25 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
   const [showNasaInfo, setShowNasaInfo] = useState(false);
   const [greetings, setGreetings] = useState<GreetingsType>({});
   const [occasion, setOccasion] = useState<OccasionType | null>(null);
+  // Look picked with THEME in the server's .env; "default" sends no variables and keeps the stylesheet look
+  const [skin, setSkin] = useState<{ id: string; vars: Record<string, string> } | null>(null);
   const serverConnected = useServerStatus();
   const isServerConnected = debug?.offline ? false : serverConnected;
   const [displayedImage, setDisplayedImage] = useState<NasaImageType | null>(null);
   const [previousImage, setPreviousImage] = useState<NasaImageType | null>(null);
 
   const weather = applyWeatherDebug(liveWeather, debug, time.getHours());
-  const snowing = Boolean(weather && (isSnowCode(weather.weathercode) || weather.snowfall > 0));
+  const weatherState = weather ? describeWeather({
+    code: weather.weathercode,
+    rain: weather.rain,
+    showers: weather.showers,
+    snowfall: weather.snowfall,
+    windspeed: weather.windspeed,
+    winddirection: weather.winddirection,
+    gusts: weather.wind_gusts,
+  }) : null;
+  // While it rains, snows or is foggy, the weather is the show: occasions keep only their flyby
+  const weatherBusy = Boolean(weatherState && (weatherState.precip !== 'none' || weatherState.kind === 'fog'));
   const isNight = weather ? !weather.is_day : (time.getHours() >= 18 || time.getHours() < 6); // fallback to time-based check if weather data isn't available
 
   const loadFromCache = (key: string) => {
@@ -116,6 +130,7 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
     );
   const fetchFacts = () => fetchWithCache('/api/facts', 'facts', setFact);
   const fetchGreetings = () => fetchWithCache('/api/greetings', 'greetings', setGreetings);
+  const fetchSkin = () => fetchWithCache('/api/theme', 'theme', setSkin);
   const fetchOccasion = () => {
     // ?date=YYYY-MM-DD previews another day, e.g. /dynamic-view?date=2026-12-24
     const date = occasionDate || new window.URLSearchParams(window.location.search).get('date');
@@ -166,7 +181,8 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
         fetchContent(),
         fetchNasaImage(),
         fetchGreetings(),
-        fetchOccasion()
+        fetchOccasion(),
+        fetchSkin()
       ]);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -253,7 +269,11 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
   const minutes = String(time.getMinutes()).padStart(2, '0');
 
   return (
-    <div className={`daily-view ${isNight ? 'night' : 'day'}${occasion ? ` theme-${occasion.theme}` : ''}`}>
+    <div
+      className={`daily-view ${isNight ? 'night' : 'day'}${occasion ? ` theme-${occasion.theme}` : ''}`}
+      data-skin={skin && Object.keys(skin.vars).length ? skin.id : undefined}
+      style={skin?.vars as CSSProperties | undefined}
+    >
       {displayedImage && (
         <>
           {previousImage && <div key={`previous-${previousImage.url}`} className={`nasa-background photo-exit ${isNight ? 'night' : 'day'}`} style={{ backgroundImage: `url(${previousImage.url})` }} />}
@@ -273,7 +293,9 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
         <div className="shooting-star delay-2"></div>
       </div>
 
-      {(occasion || snowing) && <OccasionScene occasion={occasion} snowing={snowing} />}
+      {weatherState && <WeatherScene state={weatherState} night={isNight} />}
+
+      {occasion && <OccasionScene occasion={occasion} quiet={weatherBusy} />}
 
       <div className="content-wrapper">
         <div className="top-bar">
@@ -346,7 +368,7 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
           />
         )}
 
-        <BrandLogo variant="wide" className="brand-logo" />
+        <BrandLogo variant="side" className="brand-logo" />
 
         {displayedImage && (
           <div className="photo-credit" onClick={() => setShowNasaInfo(!showNasaInfo)}>

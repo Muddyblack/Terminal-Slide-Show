@@ -222,11 +222,11 @@ export const PARTICLES: Record<string, React.ReactNode> = {
 };
 
 /** Snow only when it really snows, or in Christmas week; otherwise the occasion's own shape */
-const Particles = ({ occasion, snowing }: { occasion: OccasionType | null; snowing: boolean }) => {
+/** Gentle snow in Christmas week, otherwise the occasion's own shape (real snow is the weather layer's) */
+const Particles = ({ occasion }: { occasion: OccasionType }) => {
   // Christmas week: from 18 December (the 4th Advent can fall into it too)
-  const christmasWeek = occasion?.theme === 'christmas' && (occasion.day?.slice(5) ?? '') >= '12-18';
-  const snow = snowing || christmasWeek;
-  const shape = occasion ? PARTICLES[occasion.particle] : undefined;
+  const snow = occasion.theme === 'christmas' && (occasion.day?.slice(5) ?? '') >= '12-18';
+  const shape = occasion.particle === 'snow' ? undefined : PARTICLES[occasion.particle];
   if (!snow && !shape) return null;
   return (
     <div className={`particles ${snow ? 'snow' : 'glyphs'}`} aria-hidden="true">
@@ -256,15 +256,16 @@ const SCENES: Record<string, () => React.ReactElement> = {
   easter: Hopper,
 };
 
-/** WMO weather codes for snowfall and snow showers */
-export const isSnowCode = (code?: number) => code !== undefined && ((code >= 71 && code <= 77) || code === 85 || code === 86);
-
-export default function OccasionScene({ occasion, snowing }: { occasion: OccasionType | null; snowing: boolean }) {
-  const Scene = occasion ? SCENES[occasion.theme] : undefined;
+/**
+ * @param quiet true while real weather (rain, snow, fog) fills the screen: the occasion then
+ *   drops its own particles and keeps only the flyby. Real snow comes from the weather layer.
+ */
+export default function OccasionScene({ occasion, quiet }: { occasion: OccasionType; quiet: boolean }) {
+  const Scene = SCENES[occasion.theme];
   return (
     <>
       <FillGradient />
-      <Particles occasion={occasion} snowing={snowing} />
+      {!quiet && <Particles occasion={occasion} />}
       {Scene && <Scene />}
     </>
   );

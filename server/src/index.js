@@ -13,6 +13,7 @@ import { buildQueue } from './services/contentService.js';
 import { occasionPhotoIfReady } from './services/occasionPhotoService.js';
 import { regionPhotosIfReady, pickDaily } from './services/regionPhotoService.js';
 import { getOccasion, listOccasions } from './utils/occasions.js';
+import { getTheme, listThemes } from './utils/themes.js';
 import { createServer } from 'http';
 import { webSocketManager } from './services/webSocketManager.js';
 
@@ -240,6 +241,14 @@ const dayFromQuery = (query) => {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(query.date || ''));
     return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : new Date();
 };
+
+/**
+ * @route GET /api/theme
+ * @description The look chosen with THEME in .env, as CSS variables for the daily view.
+ */
+app.get('/api/theme', (req, res) => {
+    res.json({ ...getTheme(process.env.THEME), available: Object.keys(listThemes()) });
+});
 
 app.get('/api/occasion', (req, res) => {
     res.json(getOccasion(dayFromQuery(req.query), { country: config.info.country, ...config.occasions }));
