@@ -111,7 +111,7 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
       setter(data);
       saveToCache(cacheKey, data);
     } catch (err) {
-      console.warn(`Failed to fetch ${cacheKey}:`, err);
+      console.warn('Failed to fetch %s:', cacheKey, err);
       const cachedData = loadFromCache(cacheKey);
       if (cachedData) {
         setter(cachedData);
