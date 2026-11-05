@@ -191,6 +191,48 @@
   font-weight: 600;
 }
 
+/* occasions of the year: name left, the days it is shown right */
+.occasion-list {
+  display: grid;
+  gap: 4px;
+}
+
+.occasion-list button {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 11px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.occasion-list button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.occasion-list time {
+  flex: none;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.85em;
+  color: #b7c0d8;
+}
+
+.occasion-list button.on {
+  background: #e3dc9c;
+  border-color: #e3dc9c;
+  color: #141b30;
+  font-weight: 600;
+}
+
+.occasion-list button.on time {
+  color: #141b30;
+}
+
 .ghost {
   justify-self: start;
   color: #b7c0d8;

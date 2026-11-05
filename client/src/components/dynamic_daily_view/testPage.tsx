@@ -19,26 +19,28 @@ import DynamicDailyView from '@/components/dynamic_daily_view/dynamicDailyView';
 
 const year = new Date().getFullYear();
 
-/** [emoji, label, MM-DD]. Easter dates move, these are for 2026 and only used as examples. */
-const OCCASIONS: Array<[string, string, string]> = [
-  ['🎆', 'Neujahr', '01-01'],
-  ['⛄', 'Winterzeit', '01-25'],
-  ['💝', 'Valentinstag', '02-14'],
-  ['🎭', 'Fasnet', '02-17'],
-  ['🐣', 'Ostern', '04-05'],
-  ['🌷', 'Tag der Arbeit', '05-01'],
-  ['🕊️', 'Pfingsten', '05-24'],
-  ['🏛️', 'Einheit', '10-03'],
-  ['🍂', 'Goldener Oktober', '10-20'],
-  ['🎃', 'Halloween', '10-31'],
-  ['🧱', 'Mauerfall', '11-09'],
-  ['🏮', 'Sankt Martin', '11-11'],
-  ['🌫️', 'Novembergrau', '11-20'],
-  ['🎅', 'Nikolaus', '12-06'],
-  ['🕯️', 'Advent', '12-15'],
-  ['🎄', 'Weihnachten', '12-24'],
-  ['🥂', 'Silvester', '12-31'],
-];
+/** One occasion of the year as /api/occasions lists it: shown on screen from `from` to `to` */
+interface OccasionWindow {
+  id: string;
+  title: string;
+  day: string;
+  from: string;
+  to: string;
+}
+
+const OCCASION_EMOJI: Record<string, string> = {
+  newyear: '🎆', fasnet: '🎭', valentine: '💝', easter: '🐣', maifeiertag: '🌷', himmelfahrt: '☀️',
+  pfingsten: '🕊️', unity: '🏛️', goldenoctober: '🍂', halloween: '🎃', mauerfall: '🧱', martin: '🏮',
+  advent: '🕯️', nikolaus: '🎅', christmas: '🎄', silvester: '🥂',
+};
+
+/** "24.12." or "18.–26.12." or "28.10.–3.11." */
+const formatWindow = (from: string, to: string) => {
+  const [, fm, fd] = from.split('-').map(Number);
+  const [, tm, td] = to.split('-').map(Number);
+  if (from === to) return `${fd}.${fm}.`;
+  return fm === tm ? `${fd}.–${td}.${tm}.` : `${fd}.${fm}.–${td}.${tm}.`;
+};
 
 const PLACES = ['Friedrichshafen', 'Hamburg', 'Berlin', 'Zürich', 'Tromsø', 'Kapstadt'];
 
@@ -117,6 +119,18 @@ const TestPage = () => {
     setViewportWidth(stage.clientWidth);
     return () => observer.disconnect();
   }, []);
+
+  // The occasions of the year being looked at, with the days each one is shown
+  const occasionYear = debug.fakeNow ? Number(debug.fakeNow.slice(0, 4)) : year;
+  const [occasions, setOccasions] = useState<OccasionWindow[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/occasions?year=${occasionYear}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((list: OccasionWindow[]) => { if (!cancelled) setOccasions(list); })
+      .catch(() => { if (!cancelled) setOccasions([]); });
+    return () => { cancelled = true; };
+  }, [occasionYear]);
 
   const update = (patch: Partial<DebugOptions>) => setDebug((prev) => ({ ...prev, ...patch }));
 
@@ -197,17 +211,20 @@ const TestPage = () => {
             )}
           </Card>
 
-          <Card title="Anlass">
-            <div className="chips">
-              {OCCASIONS.map(([emoji, label, md]) => (
+          <Card title={`Anlass ${occasionYear}`}>
+            <p className="hint">Außerhalb dieser Tage bleibt die Ansicht schlicht. Schnee fällt nur bei Schneewetter oder in der Weihnachtswoche.</p>
+            <div className="occasion-list">
+              {occasions.map((occ) => (
                 <button
-                  key={label}
-                  className={date === `${year}-${md}` ? 'on' : ''}
-                  onClick={() => update({ fakeNow: `${year}-${md}T${debug.fakeNow ? debug.fakeNow.slice(11) : '12:00'}` })}
+                  key={`${occ.id}${occ.day}`}
+                  className={date >= occ.from && date <= occ.to ? 'on' : ''}
+                  onClick={() => update({ fakeNow: `${occ.day}T${debug.fakeNow ? debug.fakeNow.slice(11) : '12:00'}` })}
                 >
-                  {emoji} {label}
+                  <span>{OCCASION_EMOJI[occ.id] ?? '✨'} {occ.title.replace(/!$/, '')}</span>
+                  <time dateTime={occ.from}>{formatWindow(occ.from, occ.to)}</time>
                 </button>
               ))}
+              {!occasions.length && <p className="hint">Liste kommt vom Server …</p>}
             </div>
             <button className="ghost" onClick={() => update({ fakeNow: '' })}>Zurück zum heutigen Datum</button>
           </Card>

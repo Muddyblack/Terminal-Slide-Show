@@ -1,0 +1,37 @@
+{
+  "//": "Copy to occasions.json and keep only what you want to change. Everything left out keeps its default.",
+  "//dates": "date: \"MM-DD\" (fixed), \"easter+39\" / \"easter-47\" (days from Easter Sunday) or \"advent+7\" (days from the 1st Advent). Movable dates are worked out again every year.",
+  "//window": "before / after: how many days ahead of and after the date the occasion is shown (0 to 60).",
+  "//ids": "Built-in ids: newyear fasnet valentine easter maifeiertag himmelfahrt pfingsten unity goldenoctober halloween mauerfall martin advent nikolaus christmas silvester",
+  "//themes": "theme: newyear christmas halloween unity autumn spring easter carnival (anything else: the normal gold look). particle: spark confetti petal leaf bat snow",
+
+  "enabled": true,
+  "disabled": ["valentine"],
+
+  "override": {
+    "newyear": { "after": 6 },
+    "christmas": { "before": 3, "text": "Schöne Feiertage vom ganzen Team!" },
+    "fasnet": { "before": 40 }
+  },
+
+  "custom": [
+    {
+      "id": "sommerfest",
+      "date": "07-10",
+      "before": 3,
+      "after": 0,
+      "title": "Sommerfest",
+      "text": "Freitag ab 16 Uhr im Innenhof.",
+      "theme": "spring",
+      "particle": "confetti"
+    },
+    {
+      "id": "fronleichnam",
+      "date": "easter+60",
+      "title": "Fronleichnam",
+      "text": "Feiertag in Baden-Württemberg.",
+      "theme": "spring",
+      "particle": "petal"
+    }
+  ]
+}

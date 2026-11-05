@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { existsSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -10,6 +11,24 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Load .env from the same directory as config.js
 dotenv.config({ path: join(__dirname, '.env') });
 
+/**
+ * Optional config/occasions.json: switch occasions off, change their days and texts, or add your own.
+ * See occasions.example.json. Without the file every occasion keeps its default.
+ */
+function readOccasionsFile() {
+  const file = join(__dirname, 'occasions.json');
+  if (!existsSync(file)) return {};
+  try {
+    return JSON.parse(readFileSync(file, 'utf8'));
+  } catch (err) {
+    console.warn(`config/occasions.json ignored, it is not valid JSON: ${err.message}`);
+    return {};
+  }
+}
+
+const occasionsFile = readOccasionsFile();
+const envList = (value) => (value || '').split(',').map((v) => v.trim()).filter(Boolean);
+
 export const config = {
   ...frontendConfig,
   info: {
@@ -18,10 +37,14 @@ export const config = {
     country: process.env.COUNTRY || 'DE',
   },
   occasions: {
-    // Seasonal themes are on by default. OCCASIONS=off turns them all off.
-    enabled: (process.env.OCCASIONS || 'on').toLowerCase() !== 'off',
-    // Comma-separated ids to switch off, e.g. OCCASIONS_DISABLED=halloween,winter
-    disabled: (process.env.OCCASIONS_DISABLED || '').split(',').map((v) => v.trim()).filter(Boolean),
+    // On by default. OCCASIONS=off (or "enabled": false in occasions.json) turns them all off.
+    enabled: (process.env.OCCASIONS || 'on').toLowerCase() !== 'off' && occasionsFile.enabled !== false,
+    // Ids to switch off: OCCASIONS_DISABLED=halloween,valentine and/or "disabled" in occasions.json
+    disabled: [...envList(process.env.OCCASIONS_DISABLED), ...(Array.isArray(occasionsFile.disabled) ? occasionsFile.disabled : [])],
+    // Changes to built-in occasions, by id: { "newyear": { "after": 6 } }
+    override: occasionsFile.override ?? {},
+    // Own occasions: [{ "id": "sommerfest", "date": "07-10", "title": "Sommerfest" }]
+    custom: Array.isArray(occasionsFile.custom) ? occasionsFile.custom : [],
   },
   apiKeys: {
     NASA_API_KEY: process.env.NASA_API_KEY

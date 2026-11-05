@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 
 import '@/styles/dynamicDailyView.css';
 import BrandLogo from '@/components/brandLogo';
+import OccasionArt from '@/components/dynamic_daily_view/occasionArt';
 import AnimatedWeather from '@/components/dynamic_daily_view/animatedWeather';
-import { FLYERS, PARTICLES } from '@/components/dynamic_daily_view/flyers';
+import OccasionScene, { isSnowCode } from '@/components/dynamic_daily_view/flyers';
 import { DebugOptions, applyWeatherDebug } from '@/components/dynamic_daily_view/debugOptions';
 import { QuoteType, WeatherType, NasaImageType, GreetingsType, OccasionType, ContentType } from '@/components/dynamic_daily_view/types';
 import { useServerStatus } from '@/contexts/ServerStatusContext';
@@ -13,8 +14,6 @@ import { useServerStatus } from '@/contexts/ServerStatusContext';
 
 /** How long each text stays on screen */
 const ROTATE_MS = 25000;
-
-const SNOW_THEMES = ['christmas', 'winter'];
 
 type SetterFunction = (value: any) => void;
 
@@ -43,9 +42,11 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
   const [occasion, setOccasion] = useState<OccasionType | null>(null);
   const serverConnected = useServerStatus();
   const isServerConnected = debug?.offline ? false : serverConnected;
-  const [isImageLoading, setIsImageLoading] = useState(true);
+  const [displayedImage, setDisplayedImage] = useState<NasaImageType | null>(null);
+  const [previousImage, setPreviousImage] = useState<NasaImageType | null>(null);
 
   const weather = applyWeatherDebug(liveWeather, debug, time.getHours());
+  const snowing = Boolean(weather && (isSnowCode(weather.weathercode) || weather.snowfall > 0));
   const isNight = weather ? !weather.is_day : (time.getHours() >= 18 || time.getHours() < 6); // fallback to time-based check if weather data isn't available
 
   const loadFromCache = (key: string) => {
@@ -124,6 +125,8 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
   const fetchNasaImage = async () => {
     if (debug?.source === 'none') {
       setNasaImage(null);
+      setDisplayedImage(null);
+      setPreviousImage(null);
       return;
     }
     // The picture follows the occasion of the day, so the preview date goes along
@@ -180,7 +183,8 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
     // The test page changes places and sources: drop what is shown for the old ones
     if (debug) {
       setNasaImage(null);
-      setIsImageLoading(true);
+      setDisplayedImage(null);
+      setPreviousImage(null);
     }
 
     // Initial data load
@@ -196,29 +200,38 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
     // Rotate facts, quotes and greetings so the screen does not show the same text all day
     const rotateTimer = setInterval(() => setStep((prev) => prev + 1), ROTATE_MS);
 
+    const photoTimer = setInterval(() => {
+      if (isServerConnected) fetchNasaImage();
+    }, 60000);
+
     // Cleanup
     return () => {
       clearInterval(timer);
+      clearInterval(photoTimer);
       clearInterval(contentTimer);
       clearInterval(rotateTimer);
     };
   }, [isServerConnected, location, sourceParam, occasionDate, debug?.reloadKey]);  // Re-run when connection status or the test options change
 
   useEffect(() => {
-    if (nasaImage?.url) {
-      const img = new Image();
-      img.onload = () => {
-        setIsImageLoading(false);
-      };
-      img.onerror = () => console.warn('Background image failed to load:', nasaImage.url);
-      img.src = nasaImage.url;
-    }
-  }, [nasaImage?.url]);
+    if (!nasaImage?.url || displayedImage?.url === nasaImage.url) return;
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) return;
+      if (displayedImage?.url === nasaImage.url) return;
+      setPreviousImage(displayedImage);
+      setDisplayedImage(nasaImage);
+    };
+    img.onerror = () => console.warn('Background image failed to load:', nasaImage.url);
+    img.src = nasaImage.url;
+    return () => { cancelled = true; };
+  }, [nasaImage, displayedImage]);
 
   // "Description · Foto: Name (License)" -> description and credit shown separately
-  const creditMatch = nasaImage?.explanation.match(/\s*·?\s*((?:Foto|Photo): .*)$/);
+  const creditMatch = displayedImage?.explanation.match(/\s*·?\s*((?:Foto|Photo): .*)$/);
   const photoCredit = creditMatch?.[1] ?? '';
-  const photoDescription = (creditMatch ? nasaImage?.explanation.slice(0, creditMatch.index) : nasaImage?.explanation) ?? '';
+  const photoDescription = (creditMatch ? displayedImage?.explanation.slice(0, creditMatch.index) : displayedImage?.explanation) ?? '';
 
   const item = content ? content.items[step % content.items.length] : null;
   const shownQuote = content?.quotes.length ? content.quotes[step % content.quotes.length] : quote;
@@ -230,16 +243,25 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
     day: 'numeric'
   });
 
+  // With ?date= the occasion is another day's: count down from that day, at the current time
+  const previewDay = occasionDate || new window.URLSearchParams(window.location.search).get('date');
+  const occasionNow = previewDay && /^\d{4}-\d{2}-\d{2}$/.test(previewDay)
+    ? new Date(`${previewDay}T${time.toTimeString().slice(0, 8)}`)
+    : time;
+
   const hours = String(time.getHours()).padStart(2, '0');
   const minutes = String(time.getMinutes()).padStart(2, '0');
 
   return (
     <div className={`daily-view ${isNight ? 'night' : 'day'}${occasion ? ` theme-${occasion.theme}` : ''}`}>
-      {nasaImage && !isImageLoading && (
+      {displayedImage && (
         <>
+          {previousImage && <div key={`previous-${previousImage.url}`} className={`nasa-background photo-exit ${isNight ? 'night' : 'day'}`} style={{ backgroundImage: `url(${previousImage.url})` }} />}
           <div
-            className={`nasa-background ${isNight ? 'night' : 'day'}`}
-            style={{ backgroundImage: `url(${nasaImage.url})` }}
+            key={displayedImage.url}
+            onAnimationEnd={() => setPreviousImage(null)}
+            className={`nasa-background photo-enter ${isNight ? 'night' : 'day'}`}
+            style={{ backgroundImage: `url(${displayedImage.url})` }}
           />
           <div className={`background-overlay ${isNight ? 'night' : 'day'}`} />
         </>
@@ -251,35 +273,7 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
         <div className="shooting-star delay-2"></div>
       </div>
 
-      {occasion && (
-        <div className={`particles ${SNOW_THEMES.includes(occasion.theme) ? 'snow' : 'glyphs'}`} aria-hidden="true">
-          {Array.from({ length: SNOW_THEMES.includes(occasion.theme) ? 60 : 16 }, (_, i) => (
-            <span
-              key={i}
-              style={{
-                left: `${(i * 37) % 100}%`,
-                animationDelay: `${-((i * 53) % 23)}s`,
-                animationDuration: `${12 + ((i * 7) % 14)}s`,
-                ['--size' as string]: `${0.25 + ((i * 13) % 10) / 14}vw`,
-                ['--drift' as string]: `${((i * 11) % 9) - 4}vw`,
-              }}
-            >
-              {!SNOW_THEMES.includes(occasion.theme) && PARTICLES[occasion.particle] && (
-                <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round">
-                  {PARTICLES[occasion.particle]}
-                </svg>
-              )}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {occasion && FLYERS[occasion.theme] && (
-        <div className={`flyer${FLYERS[occasion.theme].wide ? ' wide' : ''}`} aria-hidden="true">
-          {FLYERS[occasion.theme].art}
-          <span className="flyer-shout">{FLYERS[occasion.theme].shout}</span>
-        </div>
-      )}
+      {(occasion || snowing) && <OccasionScene occasion={occasion} snowing={snowing} />}
 
       <div className="content-wrapper">
         <div className="top-bar">
@@ -299,16 +293,15 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
 
         <main className="split">
           <section className="time-block">
-            <h1 className="greeting-text" key={`g${step}`}>
-              {occasion ? occasion.title : getGreetings(time.getHours())}
-            </h1>
+            {occasion ? <OccasionArt occasion={occasion} now={occasionNow} /> : (
+              <h1 className="greeting-text" key={`g${step}`}>{getGreetings(time.getHours())}</h1>
+            )}
             <div className="clock" aria-label={`${hours}:${minutes}`}>
               {hours}
               <span className="clock-colon">:</span>
               {minutes}
             </div>
             <div className="date-text">{formattedDate}</div>
-            {occasion && <div className="occasion-text">{occasion.text}</div>}
           </section>
 
           <section className="reading-column">
@@ -355,11 +348,11 @@ const DynamicDailyView = ({ debug }: DynamicDailyViewProps = {}) => {
 
         <BrandLogo variant="wide" className="brand-logo" />
 
-        {nasaImage && (
+        {displayedImage && (
           <div className="photo-credit" onClick={() => setShowNasaInfo(!showNasaInfo)}>
             <Camera className="photo-credit-icon" />
             <div className="photo-credit-text">
-              <div className="photo-credit-title">{nasaImage.title}</div>
+              <div className="photo-credit-title">{displayedImage.title}</div>
               {photoCredit && <div className="photo-credit-by">{photoCredit}</div>}
               {showNasaInfo && photoDescription && (
                 <p className="photo-credit-description">{photoDescription}</p>

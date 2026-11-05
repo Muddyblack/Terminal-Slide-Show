@@ -12,7 +12,7 @@ import { cached } from './utils/ttlCache.js';
 import { buildQueue } from './services/contentService.js';
 import { occasionPhotoIfReady } from './services/occasionPhotoService.js';
 import { regionPhotosIfReady, pickDaily } from './services/regionPhotoService.js';
-import { getOccasion } from './utils/occasions.js';
+import { getOccasion, listOccasions } from './utils/occasions.js';
 import { createServer } from 'http';
 import { webSocketManager } from './services/webSocketManager.js';
 
@@ -243,6 +243,16 @@ const dayFromQuery = (query) => {
 
 app.get('/api/occasion', (req, res) => {
     res.json(getOccasion(dayFromQuery(req.query), { country: config.info.country, ...config.occasions }));
+});
+
+/**
+ * @route GET /api/occasions
+ * @description Every occasion of a year with the days it is shown (for the test page).
+ * @param {string} [req.query.year] - defaults to this year
+ */
+app.get('/api/occasions', (req, res) => {
+    const year = /^\d{4}$/.test(String(req.query.year)) ? Number(req.query.year) : new Date().getFullYear();
+    res.json(listOccasions(year, { country: config.info.country, ...config.occasions }));
 });
 
 // External API Integration Routes

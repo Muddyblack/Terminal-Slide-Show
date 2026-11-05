@@ -1,13 +1,13 @@
 import { cached } from '../utils/ttlCache.js';
-import { commonsQuery, pickDaily, readDiskCache, toPhoto, writeDiskCache } from './regionPhotoService.js';
+import { commonsQuery, readDiskCache, toPhoto, writeDiskCache } from './regionPhotoService.js';
 
 /**
  * Background photos that match an occasion (Mauerfall, Halloween, Weihnachtsmarkt, ...), taken from
  * curated Wikimedia Commons categories. Categories keep the pictures on topic and suitable for a
  * public screen; a free-text search would not.
  *
- * Keys are occasion ids from utils/occasions.js. Occasions without an entry (and the long seasons)
- * keep the regional photos.
+ * Keys are occasion ids from utils/occasions.js. Occasions without an entry (including your own
+ * from config/occasions.json) keep the regional photos.
  */
 const DAY = 24 * 60 * 60 * 1000;
 const DISK_TTL_MS = 30 * DAY;
@@ -84,8 +84,17 @@ export function occasionPhotos(id) {
   });
 }
 
+/** Stable within each minute, advancing through every available photo before repeating. */
+export function pickOccasionPhoto(photos, date = new Date(), now = Date.now()) {
+  if (!photos.length) return null;
+  const daySeed = Math.floor(date.getTime() / DAY);
+  const slot = Math.floor(now / 60000);
+  const index = ((daySeed + slot) % photos.length + photos.length) % photos.length;
+  return photos[index];
+}
+
 /**
- * Today's photo for an occasion, or null if none is ready within `waitMs` (the search then keeps
+ * Rotating photo for an occasion, or null if none is ready within `waitMs` (the search then keeps
  * running in the background and a later call finds it).
  * @param {string} id occasion id
  * @param {Date} date picks the photo of that day
@@ -97,7 +106,7 @@ export async function occasionPhotoIfReady(id, date = new Date(), waitMs = 3000)
   const timeout = new Promise((resolve) => setTimeout(() => resolve(null), waitMs));
   try {
     const photos = await Promise.race([search, timeout]);
-    return photos?.length ? pickDaily(photos, date) : null;
+    return photos?.length ? pickOccasionPhoto(photos, date) : null;
   } catch {
     return null;
   }
