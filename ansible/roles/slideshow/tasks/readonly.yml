@@ -1,0 +1,36 @@
+---
+# Experimental. Uses raspi-config's overlay file system: the root file system
+# becomes read-only with changes kept in RAM and lost at every reboot. Only
+# the data partition (slideshow_data_device) keeps the media across reboots.
+- name: Check that a data partition is set up
+  ansible.builtin.assert:
+    that: slideshow_data_device | length > 0
+    fail_msg: >-
+      A read-only root keeps the downloaded media in RAM unless it has its own partition.
+      Set slideshow_data_device (an ext4 partition mounted at {{ slideshow_state_dir }}).
+    quiet: true
+
+- name: Check whether the overlay is configured
+  ansible.builtin.stat:
+    path: /etc/terminal-slideshow/.readonly-enabled
+  register: slideshow_readonly_marker
+
+- name: Enable the read-only overlay and boot partition
+  ansible.builtin.command: "raspi-config nonint {{ item }}"
+  loop:
+    - enable_overlayfs
+    - enable_bootro
+  changed_when: true
+  when: not slideshow_readonly_marker.stat.exists
+
+- name: Remember that the overlay was enabled
+  ansible.builtin.file:
+    path: /etc/terminal-slideshow/.readonly-enabled
+    state: touch
+    mode: "0644"
+  when: not slideshow_readonly_marker.stat.exists
+
+- name: Reboot to start the read-only root
+  ansible.builtin.reboot:
+    reboot_timeout: 300
+  when: not slideshow_readonly_marker.stat.exists

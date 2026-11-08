@@ -1,6 +1,7 @@
 {
-    "//": "for build if linting is needed: tsc &&",
     "name": "terminal-slide-show-frontend",
+    "version": "2.1.2",
+    "//": "for build if linting is needed: tsc &&",
     "private": true,
     "type": "module",
     "scripts": {
@@ -11,7 +12,9 @@
         "lint:strict": "eslint . --max-warnings 0",
         "preview": "vite preview --port 5173",
         "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
-        "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\""
+        "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+        "dev:demo": "VITE_DEMO_MODE=true vite --host",
+        "build:demo": "VITE_DEMO_MODE=true vite build"
     },
     "dependencies": {
         "@radix-ui/react-alert-dialog": "^1.1.6",

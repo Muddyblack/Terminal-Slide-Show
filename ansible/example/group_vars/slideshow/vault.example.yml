@@ -1,0 +1,15 @@
+---
+# Copy this to vault.yml, fill it in and encrypt it:
+#   ansible-vault encrypt group_vars/slideshow/vault.yml
+# Never commit the unencrypted file.
+vault_campus_north_folder_id: "google-drive-folder-id-north"
+vault_campus_south_folder_id: "google-drive-folder-id-south"
+
+# Contents of the Google service account JSON key (share the Drive folders with its e-mail)
+slideshow_google_service_account: |
+  {
+    "type": "service_account",
+    "...": "paste the whole key file here"
+  }
+
+slideshow_nasa_api_key: "get-one-at-api.nasa.gov"

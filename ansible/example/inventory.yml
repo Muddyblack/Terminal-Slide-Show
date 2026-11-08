@@ -1,0 +1,16 @@
+---
+# Your devices. Every device must be in the "slideshow" group.
+all:
+  children:
+    slideshow:
+      children:
+        campus_north:
+          hosts:
+            lobby-pi:
+              ansible_host: 192.168.10.21
+            cafeteria-pi:
+              ansible_host: 192.168.10.22
+        campus_south:
+          hosts:
+            library-pi:
+              ansible_host: 192.168.20.31

@@ -1,9 +1,10 @@
-import { frontendConfig } from '@config/frontend.config';
+import { frontendConfig } from '@/config';
 import { motion, AnimatePresence } from 'framer-motion';
 import PropTypes from 'prop-types';
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 
 import { MediaCanvasProps, VideoPlayerProps, ImageCanvasProps, Dimensions } from '@/components/slideshow/types';
+import { demoMediaUrl } from '@/demo/media';
 import { getMediaType } from '@/utils/mediaType';
 
 /**
@@ -25,6 +26,7 @@ const MEDIA_PATH = '/media';
  * @returns {string} URL-encoded filename
  */
 const getMediaUrl = (name: string): string => {
+  if (import.meta.env.VITE_DEMO_MODE === 'true') return demoMediaUrl(name);
   return `${MEDIA_PATH}/${encodeURIComponent(name)}`;
 };
 

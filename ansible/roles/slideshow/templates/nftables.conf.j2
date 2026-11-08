@@ -1,0 +1,59 @@
+#!/usr/sbin/nft -f
+# Managed by Ansible
+{% set ssh_v4 = slideshow_ssh_allowed_cidrs | reject('search', ':') | list %}
+{% set ssh_v6 = slideshow_ssh_allowed_cidrs | select('search', ':') | list %}
+{% set api_v4 = slideshow_backend_allowed_cidrs | reject('search', ':') | list %}
+{% set api_v6 = slideshow_backend_allowed_cidrs | select('search', ':') | list %}
+
+flush ruleset
+
+table inet slideshow {
+    chain input {
+        type filter hook input priority 0; policy drop;
+
+        ct state established,related accept
+        ct state invalid drop
+        iif lo accept
+
+        # Ping and the ICMPv6 IPv6 needs to work
+        ip protocol icmp icmp type { echo-request, destination-unreachable, time-exceeded } limit rate 10/second accept
+        ip6 nexthdr icmpv6 limit rate 50/second accept
+
+{% if slideshow_allow_mdns | bool %}
+        # mDNS, so the device can be found as <hostname>.local
+        ip daddr 224.0.0.251 udp dport 5353 accept
+        ip6 daddr ff02::fb udp dport 5353 accept
+{% endif %}
+
+        # DHCP replies
+        udp sport 67 udp dport 68 accept
+        udp sport 547 udp dport 546 accept
+
+        # SSH
+{% if slideshow_ssh_allowed_cidrs | length == 0 %}
+        tcp dport {{ slideshow_ssh_port }} ct state new limit rate 10/minute accept
+{% else %}
+{% if ssh_v4 %}
+        ip saddr { {{ ssh_v4 | join(', ') }} } tcp dport {{ slideshow_ssh_port }} ct state new limit rate 10/minute accept
+{% endif %}
+{% if ssh_v6 %}
+        ip6 saddr { {{ ssh_v6 | join(', ') }} } tcp dport {{ slideshow_ssh_port }} ct state new limit rate 10/minute accept
+{% endif %}
+{% endif %}
+
+{% if api_v4 %}
+        ip saddr { {{ api_v4 | join(', ') }} } tcp dport {{ slideshow_backend_port }} accept
+{% endif %}
+{% if api_v6 %}
+        ip6 saddr { {{ api_v6 | join(', ') }} } tcp dport {{ slideshow_backend_port }} accept
+{% endif %}
+    }
+
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+    }
+
+    chain output {
+        type filter hook output priority 0; policy accept;
+    }
+}

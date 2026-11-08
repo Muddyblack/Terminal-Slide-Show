@@ -1,0 +1,11 @@
+---
+# Sets up or updates every device in the "slideshow" group. Safe to re-run.
+#   ansible-playbook muddyblack.terminal_slideshow.site
+#   ansible-playbook muddyblack.terminal_slideshow.site --limit lobby --check --diff
+- name: Configure Terminal Slide Show devices
+  hosts: slideshow
+  become: true
+  serial: "{{ slideshow_serial | default(1) }}"
+  any_errors_fatal: true
+  roles:
+    - muddyblack.terminal_slideshow.slideshow

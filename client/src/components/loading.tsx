@@ -4,6 +4,7 @@ import React from 'react';
 import {Server} from '@/components/assets/icons';
 import '@/styles/loading.css';
 import BBLoader from '@/components/loader';
+import { t } from '@/i18n';
 
 interface LoadingProps {
   isServerConnecting: boolean;
@@ -100,7 +101,7 @@ const Loading: React.FC<LoadingProps> = ({ isServerConnecting }): React.ReactEle
       }}
       className="loading-text"
     >
-      {isServerConnecting ? 'Connecting to server...' : 'Loading media...'}
+      {isServerConnecting ? t('connecting') : t('loadingMedia')}
     </motion.p>
   </motion.div>
 );

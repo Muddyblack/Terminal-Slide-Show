@@ -1,6 +1,8 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
+import { config } from '../../config/config.js';
 import { clock, sunTimes } from '../utils/sun.js';
 
 /**
@@ -14,8 +16,8 @@ import { clock, sunTimes } from '../utils/sun.js';
  * The browser never talks to a third party.
  */
 
-const dataDir = () => path.join(process.cwd(), 'data');
-const cacheDir = () => path.join(dataDir(), 'cache');
+const bundledDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'data');
+const cacheDir = () => config.paths.cachePath;
 
 async function readJson(file, fallback) {
     try {
@@ -23,6 +25,12 @@ async function readJson(file, fallback) {
     } catch {
         return fallback;
     }
+}
+
+/** A content file from DATA_PATH/content, else the bundled one */
+async function readContentFile(name, fallback) {
+    const own = await readJson(path.join(config.paths.dataPath, 'content', name), null);
+    return own ?? readJson(path.join(bundledDir, 'content', name), fallback);
 }
 
 async function readCache(name) {
@@ -210,8 +218,8 @@ export function interleave(groups, rand = Math.random) {
  * @returns {Promise<{kind:string,text:string}[]>}
  */
 export async function buildQueue({ location, date, place, fetchFn, rand = Math.random }) {
-    const region = await readJson(path.join(dataDir(), 'content', 'region.json'), { bodensee: [], cities: {} });
-    const extra = await readJson(path.join(dataDir(), 'content', 'tips.json'), {});
+    const region = await readContentFile('region.json', { bodensee: [], cities: {} });
+    const extra = await readContentFile('tips.json', {});
 
     const key = Object.keys(region.cities).find((c) => location.toLowerCase().includes(c));
     const groups = {

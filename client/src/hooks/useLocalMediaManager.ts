@@ -1,6 +1,7 @@
-import { frontendConfig } from '@config/frontend.config';
+import { frontendConfig } from '@/config';
 import { useState, useCallback, useEffect, useRef } from 'react';
 
+import { DEMO_MEDIA } from '@/demo/media';
 import { NavigationDirection } from '@/components/slideshow/types';
 import { useServerStatus } from '@/contexts/ServerStatusContext';
 
@@ -37,6 +38,15 @@ export const useLocalMediaManager = (isScheduleActive = true): MediaManagerResul
   const RECONNECT_INTERVAL = frontendConfig.websocket.reconnectInterval;
 
   const connect = useCallback(() => {
+    // GitHub Pages demo: no backend, so the slides come from the bundled demo list
+    if (import.meta.env.VITE_DEMO_MODE === 'true') {
+      setAllMedia(DEMO_MEDIA);
+      setLoading(false);
+      setServerReady(true);
+      setWebSocketStatus('connected');
+      return;
+    }
+
     if (!isScheduleActive || !isServerConnected || wsRef.current?.readyState === WebSocket.OPEN) {
       return;
     }
