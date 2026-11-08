@@ -40,6 +40,11 @@ jobs:
       - uses: ansible/ansible-lint@v25
         with:
           working_directory: ansible
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install 'ansible-core>=2.19,<2.20'
+      - run: python3 tools/test-ansible.py
 
   client:
     runs-on: ubuntu-latest

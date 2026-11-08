@@ -33,9 +33,18 @@
   ansible.builtin.import_tasks: maintenance.yml
   tags: [maintenance]
 
+- name: Apply pending service changes before checking health
+  ansible.builtin.meta: flush_handlers
+  tags: [always]
+
 - name: Check that the device works before it is locked down
   ansible.builtin.import_tasks: healthcheck.yml
-  tags: [health]
+  tags: [always, health]
+
+- name: Clean up releases after successful health checks
+  ansible.builtin.import_tasks: cleanup.yml
+  when: slideshow_backend_mode == 'local'
+  tags: [app]
 
 - name: Read-only root filesystem (experimental)
   ansible.builtin.import_tasks: readonly.yml

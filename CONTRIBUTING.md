@@ -4,7 +4,7 @@ Thanks for helping out. Bug reports, fixes and small features are all welcome.
 
 ## Setup
 
-You need Node.js 24 (`nix develop` provides it).
+You need Node.js 24, Python 3, Ansible and ansible-lint (`nix develop` provides them).
 
 ```bash
 npm install && npm install --prefix client && npm install --prefix server
@@ -16,7 +16,7 @@ npm run dev
 
 1. Fork the repo and branch from `master`.
 2. Keep changes focused; one topic per PR.
-3. Run `npm test` in `server/` and `npm run typecheck` in `client/`, plus `npm run lint` in `client/`. If you touched `ansible/`, run `ansible-lint` there. CI runs the tests, the typecheck, the build and `ansible-lint`.
+3. Run `make check` for version consistency, server tests, frontend type checking, production and demo builds, Ansible lint and deployment sequencing tests. `make ansible-check` runs just the Ansible checks. The sequencing tests use temporary local directories and simulated service tasks; they do not configure a device. For client changes, also run `npm run lint` in `client/`.
 4. Describe what changed and why, and include a screenshot for UI changes.
 
 ## Releases

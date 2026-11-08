@@ -1,11 +1,13 @@
 # One entry point for the repo. Each part keeps its own tooling; these targets only fan out
 # to the same commands CI runs.
-.PHONY: help install dev test build demo package version-check tag tag-beta
+.PHONY: help install dev test build demo package version-check tag tag-beta check ansible-check
 
 help:
 	@echo "make install        install server and client dependencies"
 	@echo "make dev            server and client together"
 	@echo "make test           server tests"
+	@echo "make check          version, tests, typecheck, builds and Ansible checks"
+	@echo "make ansible-check  Ansible lint and deployment sequencing tests"
 	@echo "make build          build the client"
 	@echo "make demo           run the GitHub Pages demo locally (made-up data, no server)"
 	@echo "make package        build the release tarball into dist-release/"
@@ -23,6 +25,15 @@ dev:
 
 test:
 	npm test --prefix server
+
+check: version-check test ansible-check
+	npm run typecheck --prefix client
+	npm run build --prefix client
+	npm run build:demo --prefix client
+
+ansible-check:
+	cd ansible && ansible-lint
+	python3 tools/test-ansible.py
 
 build:
 	npm run build --prefix client

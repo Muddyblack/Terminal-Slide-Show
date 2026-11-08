@@ -129,7 +129,7 @@ What this setup does, and where it stops.
 ## Updating
 
 - **New app version:** change `slideshow_version` (and the checksum) in your inventory, then `ansible-playbook muddyblack.terminal_slideshow.update --limit canary`, check it, then run it for everything. Each device is health-checked before the next one starts.
-- **Rolling back:** set the previous version again and re-run `update`. The last three releases stay on the device (`slideshow_keep_releases`), so no download is needed.
+- **Rolling back:** set the previous version again and re-run `update`. The last three releases stay on the device (`slideshow_keep_releases`), so no download is needed. Pending service restarts run before health checks, including with `--tags app`. Old releases are pruned only after those checks succeed; a failed restart or health check preserves them. Rollback remains a manual operation.
 - **OS updates:** automatic for security fixes. For a full upgrade at a time you choose: `update -e upgrade_os=true --limit canary`.
 
 ## Read-only root (experimental)
