@@ -20,3 +20,29 @@
   delay: 5
   check_mode: false
   when: slideshow_display_mode != 'none'
+
+# A crash-looping service is briefly "active" between restarts, so one look is not enough.
+# Wait a little and check that it is still up and has not restarted in the meantime.
+- name: Give the display a moment to prove it stays up
+  ansible.builtin.pause:
+    seconds: 10
+  when: slideshow_display_mode != 'none'
+
+- name: Read the display service again
+  ansible.builtin.systemd_service:
+    name: slideshow-display
+  register: slideshow_display_stable
+  check_mode: false
+  when: slideshow_display_mode != 'none'
+
+- name: Check that the display service stayed up
+  ansible.builtin.assert:
+    that:
+      - slideshow_display_stable.status.ActiveState == 'active'
+      - (slideshow_display_stable.status.NRestarts | default('0') | int)
+        <= (slideshow_display_state.status.NRestarts | default('0') | int)
+    fail_msg: >-
+      The display service keeps restarting. Look at the cause with
+      "journalctl -u slideshow-display" on the device.
+    quiet: true
+  when: slideshow_display_mode != 'none'
