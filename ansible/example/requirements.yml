@@ -1,0 +1,6 @@
+---
+collections:
+  - name: https://github.com/Muddyblack/Terminal-Slide-Show.git#/ansible
+    type: git
+    version: main   # pin a release tag in real use
+  - name: ansible.posix

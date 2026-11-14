@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Managed by Ansible. Starts Chromium fullscreen inside cage.
+set -euo pipefail
+
+url="{{ slideshow_base_url }}"
+
+# Wait for the backend, so the kiosk never starts on an error page
+until curl --silent --fail --max-time 3 --output /dev/null "$url/config.js"; do
+    sleep 2
+done
+
+profile="${XDG_RUNTIME_DIR:?}/chromium"
+mkdir -p "$profile"
+
+exec /usr/bin/cage -d -- /usr/bin/chromium \
+    --kiosk \
+    --user-agent="Mozilla/5.0 (TERMINAL-SLIDE-SHOW) Gecko/20100101 Chrome/123.0" \
+    --ozone-platform=wayland \
+    --user-data-dir="$profile" \
+    --disk-cache-dir="$profile/cache" \
+    --password-store=basic \
+    --noerrdialogs \
+    --disable-infobars \
+    --disable-session-crashed-bubble \
+    --disable-translate \
+    --no-first-run \
+    --overscroll-history-navigation=0 \
+    --disable-pinch \
+    --autoplay-policy=no-user-gesture-required \
+{% for flag in slideshow_chromium_flags %}
+    {{ flag | quote }} \
+{% endfor %}
+    "$url"

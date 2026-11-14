@@ -18,7 +18,9 @@ services:
       dockerfile: Dockerfile.backend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      # The frontend container reaches the backend over the compose network;
+      # only publish it on the host's loopback
+      - "127.0.0.1:3000:3000"
     environment:
       - NODE_ENV=production
     volumes:

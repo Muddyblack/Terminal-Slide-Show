@@ -4,8 +4,20 @@ on:
   push:
     branches: [master]
   pull_request:
+  # The release workflow runs the whole suite again on the release commit
+  workflow_call:
+
+permissions:
+  contents: read
 
 jobs:
+  # package.json is the one source of the version; everything else is a copy of it
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node scripts/version.mjs check
+
   server:
     runs-on: ubuntu-latest
     defaults:
@@ -20,6 +32,19 @@ jobs:
           cache-dependency-path: server/package-lock.json
       - run: npm ci
       - run: npm test
+
+  ansible:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ansible/ansible-lint@v25
+        with:
+          working_directory: ansible
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install 'ansible-core>=2.19,<2.20'
+      - run: python3 tools/test-ansible.py
 
   client:
     runs-on: ubuntu-latest
@@ -36,3 +61,5 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
+      - name: Build the demo page
+        run: npm run build:demo

@@ -5,7 +5,27 @@ declare module '@config/frontend.config' {
   }
 
   export interface FrontendConfig {
-    info: { location: string };
+    info: {
+      location: string;
+      latitude: number | null;
+      longitude: number | null;
+      elevation: number | null;
+    };
+    locale: {
+      language: 'de' | 'en';
+      units: 'metric' | 'imperial';
+    };
+    dailyView: {
+      weather: boolean;
+      nasa: boolean;
+      quote: boolean;
+      fact: boolean;
+      greeting: boolean;
+    };
+    branding: {
+      logo: string;
+      logoAlt: string;
+    };
     slideshow: {
       watchInterval: number;
       defaultSlideDuration: number;

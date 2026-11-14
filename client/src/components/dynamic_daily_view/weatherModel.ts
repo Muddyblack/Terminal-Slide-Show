@@ -20,7 +20,7 @@ export interface WeatherState {
   freezing: boolean;
   /** Thunderstorm strength, 0 when there is none */
   thunder: 0 | Level;
-  /** German description for the card */
+  /** German description for the card (i18n weatherLabel translates it) */
   label: string;
   /** Horizontal push from -1 (to the left) to 1 (to the right) */
   windX: number;

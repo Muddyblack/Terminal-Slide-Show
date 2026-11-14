@@ -1,0 +1,37 @@
+---
+# Rolls out a new app version (set slideshow_version in your inventory) one device
+# at a time and stops at the first device that does not come back healthy.
+# Add -e upgrade_os=true to also install all pending OS updates, including Chromium.
+#   ansible-playbook muddyblack.terminal_slideshow.update --limit canary
+- name: Update Terminal Slide Show devices
+  hosts: slideshow
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  tasks:
+    - name: Install all pending OS updates
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: dist
+      when: upgrade_os | default(false) | bool
+
+    - name: Apply the role (new release, health check)
+      ansible.builtin.include_role:
+        name: muddyblack.terminal_slideshow.slideshow
+
+    - name: Check whether a reboot is needed
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: update_reboot_required
+      when: upgrade_os | default(false) | bool
+
+    - name: Reboot if the updates ask for it
+      ansible.builtin.reboot:
+        reboot_timeout: 300
+      when: update_reboot_required.stat.exists | default(false)
+
+    - name: Check the device again after the reboot
+      ansible.builtin.include_role:
+        name: muddyblack.terminal_slideshow.slideshow
+        tasks_from: healthcheck
+      when: update_reboot_required.stat.exists | default(false)

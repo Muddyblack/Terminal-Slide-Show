@@ -1,6 +1,6 @@
 {
   "name": "terminal-slide-show-server",
-  "version": "1.0.0",
+  "version": "2.1.2",
   "type": "module",
   "scripts": {
     "dev": "DEV_TOOLS=1 node --watch-path=src --watch-path=config src/index.js",

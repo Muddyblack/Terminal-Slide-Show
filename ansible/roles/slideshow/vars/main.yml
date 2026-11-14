@@ -1,0 +1,30 @@
+---
+slideshow_install_dir: /opt/terminal-slideshow
+slideshow_config_dir: /etc/terminal-slideshow
+slideshow_state_dir: /var/lib/slideshow
+slideshow_backend_user: slideshow
+
+# Where the display and the power timer find the backend
+slideshow_base_url: >-
+  {{ slideshow_backend_url | trim('/') if slideshow_backend_mode == 'remote'
+     else 'http://127.0.0.1:' ~ slideshow_backend_port }}
+
+slideshow_effective_settings: >-
+  {{ ({'info': {'location': slideshow_location}} if slideshow_location else {})
+     | combine(slideshow_settings, recursive=True)
+     | combine(slideshow_settings_override, recursive=True)
+     | combine({'google': {'useServiceAccount': (slideshow_google_service_account | length > 0)}}
+               if slideshow_backend_mode == 'local' else {}, recursive=True) }}
+
+_slideshow_packages:
+  base: [ca-certificates, curl, python3, unattended-upgrades]
+  backend: [nodejs]
+  firewall: [nftables]
+  browser: [cage, chromium, fonts-noto-color-emoji, fonts-roboto]
+  mpv: [mpv]
+  power:
+    none: []
+    command: []
+    vcgencmd: [libraspberrypi-bin]
+    wlr-randr: [wlr-randr]
+    cec: [cec-utils]

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a1d3b"/><stop offset="1" stop-color="#26080f"/></linearGradient></defs>
+<rect width="1920" height="1080" fill="url(#g)"/>
+<circle cx="1560" cy="260" r="360" fill="#fff" opacity=".05"/><circle cx="1700" cy="860" r="220" fill="#fff" opacity=".06"/>
+<text x="160" y="400" font-family="sans-serif" font-size="44" letter-spacing="10" fill="#fff" opacity=".7">LIBRARY</text>
+<text x="160" y="560" font-family="sans-serif" font-weight="700" font-size="150" fill="#fff">Opening hours</text>
+<text x="160" y="680" font-family="sans-serif" font-size="56" fill="#fff" opacity=".85">Mon–Fri 8:00–20:00 · Sat 10:00–16:00</text>
+<text x="160" y="980" font-family="monospace" font-size="32" fill="#fff" opacity=".4">demo slide · not real data</text>
+</svg>

@@ -1,0 +1,18 @@
+---
+# Only reached after the restarted services pass their health checks.
+- name: Find old releases
+  ansible.builtin.find:
+    paths: "{{ slideshow_install_dir }}/releases"
+    patterns: "terminal-slide-show-*"
+    file_type: directory
+  register: slideshow_old_releases
+
+- name: Remove releases beyond the ones to keep
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: >-
+    {{ (slideshow_old_releases.files | sort(attribute='mtime', reverse=true))[(slideshow_keep_releases | int):]
+       | rejectattr('path', 'equalto', slideshow_release_dir) | list }}
+  loop_control:
+    label: "{{ item.path }}"

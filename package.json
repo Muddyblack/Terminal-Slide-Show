@@ -1,7 +1,7 @@
 {
   "name": "terminal-slide-show",
   "private": true,
-  "version": "0.9.0",
+  "version": "2.1.2",
   "description": "non-GUI slideshow that fetches new files from Google Drive, allowing you to update the slideshow remotely.",
   "type": "module",
   "scripts": {

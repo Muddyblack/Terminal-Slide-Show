@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  role_name: slideshow
+  author: Muddyblack
+  description: Terminal Slide Show device (backend, kiosk display, hardening, updates)
+  license: GPL-3.0-or-later
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - trixie
+dependencies: []

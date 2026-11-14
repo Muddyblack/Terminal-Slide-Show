@@ -18,6 +18,8 @@
           packages = with pkgs; [
             nodejs_24
             python3
+            ansible
+            ansible-lint
             gnumake
             gcc
           ];

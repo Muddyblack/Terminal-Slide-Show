@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Managed by Ansible. Switches the screen on or off following the backend's schedule.
+# Run every 30 seconds by slideshow-display-power.timer.
+set -uo pipefail
+
+url="{{ slideshow_base_url }}"
+state_dir=/run/slideshow-display-power
+state_file="$state_dir/state"
+mkdir -p "$state_dir"
+
+# Ask the backend. If it is unreachable keep the screen as it is.
+answer=$(curl --silent --fail --max-time 5 "$url/api/display-state") || exit 0
+desired=$(printf '%s' "$answer" | python3 -c 'import json,sys; print("on" if json.load(sys.stdin)["active"] else "off")') || exit 0
+
+current=$(cat "$state_file" 2>/dev/null || echo unknown)
+[ "$desired" = "$current" ] && exit 0
+
+power() {
+    case "{{ slideshow_display_power_method }}" in
+        vcgencmd)
+            vcgencmd display_power "$([ "$1" = on ] && echo 1 || echo 0)" >/dev/null
+            ;;
+        wlr-randr)
+            uid=$(id -u {{ slideshow_kiosk_user }})
+            runuser -u {{ slideshow_kiosk_user }} -- env XDG_RUNTIME_DIR="/run/user/$uid" WAYLAND_DISPLAY=wayland-0 \
+                wlr-randr --output {{ slideshow_display_output | quote }} "--$1"
+            ;;
+        cec)
+            if [ "$1" = on ]; then cec_command='on 0'; else cec_command='standby 0'; fi
+            printf '%s\n' "$cec_command" | cec-client -s -d 1 >/dev/null
+            ;;
+        command)
+            if [ "$1" = on ]; then
+                {{ slideshow_display_power_on_command | default(":", true) }}
+            else
+                {{ slideshow_display_power_off_command | default(":", true) }}
+            fi
+            ;;
+    esac
+}
+
+if [ "$desired" = on ]; then
+    # Some monitors ignore the first signal after being cut, so repeat it
+    for _ in 1 2 3; do
+        power on || true
+        sleep 2
+    done
+else
+    power off || true
+fi
+
+echo "$desired" > "$state_file"
+logger -t slideshow-display-power "screen $desired"

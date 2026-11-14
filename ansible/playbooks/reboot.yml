@@ -1,0 +1,17 @@
+---
+# Reboots devices one at a time and waits until each is healthy again.
+#   ansible-playbook muddyblack.terminal_slideshow.reboot --limit lobby
+- name: Reboot Terminal Slide Show devices
+  hosts: slideshow
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  tasks:
+    - name: Reboot
+      ansible.builtin.reboot:
+        reboot_timeout: 300
+
+    - name: Wait until the device is healthy
+      ansible.builtin.include_role:
+        name: muddyblack.terminal_slideshow.slideshow
+        tasks_from: healthcheck

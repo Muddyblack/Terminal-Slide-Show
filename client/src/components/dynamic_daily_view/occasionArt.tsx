@@ -3,6 +3,8 @@ import {
   Leaf, LucideIcon, Snowflake, Sparkles, Sun, TreePine,
 } from 'lucide-react';
 
+import { frontendConfig } from '@/config';
+import { dateLocale } from '@/i18n';
 import { OccasionType } from './types';
 
 /**
@@ -68,14 +70,15 @@ const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(),
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-const dayMonth = (date: Date) => date.toLocaleDateString('de-DE', { day: 'numeric', month: 'long' });
+const dayMonth = (date: Date) => date.toLocaleDateString(dateLocale(), { day: 'numeric', month: 'long' });
 
 function kicker(occasion: OccasionType, now: Date): string {
+  const en = frontendConfig.locale.language === 'en';
   if (occasion.id === 'mauerfall') return '9. November 1989';
-  if (!occasion.day) return 'Zur Jahreszeit';
+  if (!occasion.day) return en ? 'Seasonal' : 'Zur Jahreszeit';
   const day = parseDay(occasion.day);
-  if (startOfDay(now) >= day) return `Heute · ${dayMonth(now)}`;
-  return day.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+  if (startOfDay(now) >= day) return `${en ? 'Today' : 'Heute'} · ${dayMonth(now)}`;
+  return day.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
 /** "19 Tage bis Heiligabend", or on New Year's Eve a running "09:12:44 bis 2027" */

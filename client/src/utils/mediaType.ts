@@ -1,4 +1,4 @@
-import { frontendConfig } from '@config/frontend.config';
+import { frontendConfig } from '@/config';
 
 export type MediaKind = 'image' | 'gif' | 'video';
 

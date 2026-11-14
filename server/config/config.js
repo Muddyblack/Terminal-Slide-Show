@@ -3,6 +3,8 @@ import { existsSync, readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
+import { deepMerge } from '../src/utils/deepMerge.js';
+
 import { frontendConfig } from './frontend.config.js';
 
 // Get current file's directory
@@ -29,10 +31,25 @@ function readOccasionsFile() {
 const occasionsFile = readOccasionsFile();
 const envList = (value) => (value || '').split(',').map((v) => v.trim()).filter(Boolean);
 
-export const config = {
+/**
+ * Optional JSON file with per-device settings, merged over the defaults below.
+ * Lets one build serve many devices (schedule, location, display behaviour, ...).
+ */
+function loadOverrides() {
+  const file = process.env.SLIDESHOW_CONFIG;
+  if (!file) return {};
+  try {
+    return JSON.parse(readFileSync(file, 'utf8'));
+  } catch (error) {
+    throw new Error(`Cannot load SLIDESHOW_CONFIG (${file}): ${error.message}`);
+  }
+}
+
+const defaults = {
   ...frontendConfig,
   info: {
-    location: process.env.LOCATION || 'LOCATION',
+    ...frontendConfig.info,
+    location: process.env.LOCATION || frontendConfig.info.location,
     // ISO country code; Germany-only holidays are shown when this is DE
     country: process.env.COUNTRY || 'DE',
   },
@@ -46,6 +63,8 @@ export const config = {
     // Own occasions: [{ "id": "sommerfest", "date": "07-10", "title": "Sommerfest" }]
     custom: Array.isArray(occasionsFile.custom) ? occasionsFile.custom : [],
   },
+  // Look of the daily view: default, dhbw or an id from config/themes.json
+  theme: process.env.THEME || 'default',
   apiKeys: {
     NASA_API_KEY: process.env.NASA_API_KEY
   },
@@ -57,25 +76,16 @@ export const config = {
     scopes: ['https://www.googleapis.com/auth/drive.readonly'], // Google Drive API scopes
     apiVersion: 'v3' // Google Drive API version
   },
-  display: {
-    // What the display does outside operating hours (terminal mode):
-    // 'black' shows a black screen, 'power' also cuts the HDMI output
-    offMode: process.env.DISPLAY_OFF_MODE === 'power' ? 'power' : 'black',
-  },
   sync: {
     interval: 1000, // Default sync interval in milliseconds
     retryAttempts: 3, // Number of retry attempts for failed syncs
 },
-  kiosk: {
-    targetUrl: process.env.KIOSK_URL, // Target URL for the kiosk
-    user: process.env.KIOSK_USER || 'kiosk',                         
-    password: process.env.KIOSK_PASSWORD,
-  },
-  backendPowerSaving: {
-    timeout: 5 * 60 * 1000 // standard 5 minutes in milliseconds
-  },
   paths: {
-    downloadPath: '../downloads', // Path to download files from Google Drive
+    // Resolved against the working directory, so absolute paths work too
+    downloadPath: process.env.DOWNLOAD_PATH || '../downloads', // Where Google Drive files are stored
+    dataPath: process.env.DATA_PATH || join(__dirname, '../data'), // Quotes, facts and greetings per language, plus content/
+    cachePath: process.env.CACHE_PATH || join(__dirname, '../data/cache'), // Last good copies of the fetched feeds, must be writable
+    clientDist: process.env.CLIENT_DIST || join(__dirname, '../../client/dist'), // Built frontend, if served by this backend
   },
   logging: {
     level: process.env.LOG_LEVEL || 'warn', // Logging level (debug, info, warn, error)
@@ -90,5 +100,15 @@ export const config = {
     host: process.env.FRONTEND_HOST || '127.0.0.1'
   },
 };
+
+export const config = deepMerge(defaults, loadOverrides());
+
+/**
+ * The part of the config the browser needs, served at /config.js
+ * so it can differ per device without rebuilding the frontend.
+ */
+export const publicConfig = Object.fromEntries(
+  Object.keys(frontendConfig).map((key) => [key, config[key]])
+);
 
 export default config;
