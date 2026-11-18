@@ -6,6 +6,9 @@ WORKDIR /app
 # Install build dependencies
 RUN apk add --no-cache python3 make g++
 
+# Root package.json is the version source read by vite.config.ts
+COPY package.json ./package.json
+
 # Copy package files first for caching
 COPY client/package*.json ./client/
 WORKDIR /app/client
@@ -14,6 +17,7 @@ RUN npm install
 # Copy source code
 COPY client/ ./
 COPY server/config ../server/config/
+COPY server/data ../server/data/
 
 # Build the frontend
 RUN npm run build
