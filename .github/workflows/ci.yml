@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
   # The release workflow runs the whole suite again on the release commit
   workflow_call:

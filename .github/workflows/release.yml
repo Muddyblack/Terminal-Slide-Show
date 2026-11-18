@@ -11,7 +11,7 @@ on:
   # the GitHub release come last, so a failed build never leaves a tag behind. Retry a failed
   # run with "Re-run failed jobs".
   push:
-    branches: [master]
+    branches: [main]
     paths: [package.json]
   workflow_dispatch:
 

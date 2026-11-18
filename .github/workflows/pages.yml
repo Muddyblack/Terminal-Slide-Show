@@ -4,7 +4,7 @@ name: Demo page
 # There is no backend and no real content in it: see client/src/demo.
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - "client/**"
       - "server/data/en/**"
