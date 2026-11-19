@@ -65,6 +65,8 @@ Use `--limit` with a device or a site group (`--limit campus_north`) and `--chec
 | `branding.logo`, `branding.logoAlt` | Logo of the daily view |
 | `schedule.*` | `onTime`, `offTime`, `days` (1 = Monday), `vacationPeriods` |
 | `slideshow.defaultSlideDuration` | Milliseconds per slide |
+| `slideshow.transition` | How slides change: `crossfade` (default), `morph`, `morphBlur`, `blur` or `zoom`. The morph melts two images into each other and needs WebGL; videos and GIFs always cross-fade |
+| `slideshow.transitionDuration` | Milliseconds a slide change takes (default 1000) |
 
 Site values go in `group_vars`, device values in `host_vars`. Ansible *replaces* a dictionary that is defined at two levels, so use **`slideshow_settings_override`** in `host_vars`: it is merged on top of `slideshow_settings`, so a device lists only what differs:
 

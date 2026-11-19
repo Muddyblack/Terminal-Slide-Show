@@ -10,6 +10,12 @@ import {
   WeatherPreset,
 } from '@/components/dynamic_daily_view/debugOptions';
 import DynamicDailyView from '@/components/dynamic_daily_view/dynamicDailyView';
+import Slideshow from '@/components/slideshow/slideshow';
+import {
+  configuredTransition,
+  isTransitionKind,
+  TransitionKind,
+} from '@/components/slideshow/transitions';
 
 /**
  * /test: the daily view with a control panel for trying out times, occasions, weather,
@@ -80,6 +86,14 @@ const SOURCES: Array<[PictureSource, string, string]> = [
   ['none', 'Kein Bild', 'Nur der Farbverlauf'],
 ];
 
+const TRANSITIONS: Array<[TransitionKind, string, string]> = [
+  ['crossfade', 'Überblenden', 'Standard: das neue Bild blendet über dem alten ein, ohne schwarzen Zwischenschritt'],
+  ['morph', 'Morph (Fluss)', 'Die Bilder zerfließen ineinander. Nur Fotos, braucht WebGL'],
+  ['morphBlur', 'Morph + Weichzeichner', 'Wie Morph, in der Mitte zusätzlich weich'],
+  ['blur', 'Unschärfe-Überblendung', 'Das neue Bild taucht aus der Unschärfe auf'],
+  ['zoom', 'Zoom-Überblendung', 'Überblenden mit langsamem Heranzoomen'],
+];
+
 const pad = (n: number) => String(n).padStart(2, '0');
 const nowLocal = () => {
   const d = new Date();
@@ -141,6 +155,12 @@ const TestPage = () => {
   const [open, setOpen] = useState(false);
   const [side, setSide] = useState<'left' | 'right'>('left');
   const [debug, setDebug] = useState<DebugOptions>(debugFromUrl);
+  // /test?view=all&transition=morph starts with the whole slideshow and a chosen transition
+  const [showAll, setShowAll] = useState(() => new window.URLSearchParams(window.location.search).get('view') === 'all');
+  const [transition, setTransition] = useState<TransitionKind>(() => {
+    const value = new window.URLSearchParams(window.location.search).get('transition');
+    return isTransitionKind(value) ? value : configuredTransition();
+  });
   const [placeInput, setPlaceInput] = useState('');
   const stageRef = useRef<HTMLDivElement>(null);
   const [viewportWidth, setViewportWidth] = useState(window.innerWidth);
@@ -194,7 +214,7 @@ const TestPage = () => {
           className={`test-view${open ? ' open' : ''}`}
           style={{ transform: `scale(${scale})`, transformOrigin: side === 'left' ? 'right center' : 'left center' }}
         >
-          <DynamicDailyView debug={debug} />
+          {showAll ? <Slideshow transition={transition} debug={debug} /> : <DynamicDailyView debug={debug} />}
         </div>
       </div>
 
@@ -217,6 +237,25 @@ const TestPage = () => {
               ⇄
             </button>
           </header>
+
+          <Card title="Ansicht &amp; Übergang">
+            <Toggle checked={showAll} onChange={setShowAll}>
+              Ganze Slideshow (alle Bilder)
+            </Toggle>
+            <p className="hint">
+              Aus: nur die Tagesansicht. An: die echte Slideshow mit allen Bildern und Videos; die Tagesansicht
+              kommt darin wie im Betrieb zwischendurch dran. Mit den Pfeilen (Maus bewegen) geht es sofort weiter.
+            </p>
+            <div className="choices">
+              {TRANSITIONS.map(([id, label, hint]) => (
+                <button key={id} className={transition === id ? 'on' : ''} aria-pressed={transition === id} onClick={() => setTransition(id)}>
+                  <strong>{label}{id === configuredTransition() ? ' · Einstellung' : ''}</strong>
+                  <small>{hint}</small>
+                </button>
+              ))}
+            </div>
+            {!showAll && <p className="hint">Der Übergang wirkt nur in der ganzen Slideshow.</p>}
+          </Card>
 
           <Card title="Zeit &amp; Datum">
             <Toggle
@@ -322,7 +361,7 @@ const TestPage = () => {
             </div>
           </Card>
 
-          <button className="reset" onClick={() => { setDebug(DEFAULT_DEBUG); setPlaceInput(''); }}>
+          <button className="reset" onClick={() => { setDebug(DEFAULT_DEBUG); setPlaceInput(''); setShowAll(false); setTransition(configuredTransition()); }}>
             Alles zurücksetzen
           </button>
         </div>

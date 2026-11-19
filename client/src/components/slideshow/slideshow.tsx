@@ -2,6 +2,8 @@ import { AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 import MediaCanvas from '@/components/slideshow/mediaCanvas';
+import type { DebugOptions } from '@/components/dynamic_daily_view/debugOptions';
+import type { TransitionKind } from '@/components/slideshow/transitions';
 import { NavigationDirection, LocalMediaManagerReturn } from '@/components/slideshow/types';
 import { frontendConfig } from '@/config';
 
@@ -22,9 +24,11 @@ import { getMediaType } from '@/utils/mediaType';
  * @description A media slideshow component that handles automatic playback, navigation,
  * loading states, and error handling. Only active when schedule is enabled.
  * 
+ * @param {TransitionKind} [props.transition] - Overrides `slideshow.transition` (the /test page uses this)
+ * @param {DebugOptions} [props.debug] - Test overrides for the daily view (the /test page uses this)
  * @returns {JSX.Element} The rendered slideshow component
  */
-const Slideshow = () => {
+const Slideshow = ({ transition, debug }: { transition?: TransitionKind; debug?: DebugOptions } = {}) => {
   // The schedule is only enforced on the kiosk device; other browsers always show the slideshow.
   // Hooks must run unconditionally, so the result is ignored instead of skipping the call.
   const scheduleActive = useSchedule();
@@ -120,14 +124,14 @@ const Slideshow = () => {
         {!loading && (media ? (
           <>
             {media.isDynamicView ? (
-              <DynamicDailyView key="dynamic-view" />
+              <DynamicDailyView key="dynamic-view" debug={debug} />
             ) : (
-              <MediaCanvas key="media" media={media} onVideoEnd={playsToEnd ? () => handleNavigate('next') : undefined} />
+              <MediaCanvas key="media" media={media} transition={transition} onVideoEnd={playsToEnd ? () => handleNavigate('next') : undefined} />
             )}
             {!isServerConnected && <ConnectionToast />}
           </>
         ) : isScheduleActive ? (
-          <DynamicDailyView key="dynamic-view" />
+          <DynamicDailyView key="dynamic-view" debug={debug} />
         ) : null)}
       </AnimatePresence>
 

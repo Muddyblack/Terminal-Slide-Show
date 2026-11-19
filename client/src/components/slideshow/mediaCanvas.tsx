@@ -1,23 +1,21 @@
-import { frontendConfig } from '@/config';
 import { motion, AnimatePresence } from 'framer-motion';
 import PropTypes from 'prop-types';
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 
-import { MediaCanvasProps, VideoPlayerProps, ImageCanvasProps, Dimensions } from '@/components/slideshow/types';
+import {
+  configuredTransition,
+  configuredTransitionDuration,
+  fadeStyleOf,
+  fadeVariants,
+  FadeStyle,
+} from '@/components/slideshow/transitions';
+import { MediaCanvasProps, MediaItem, VideoPlayerProps, ImageCanvasProps, Dimensions } from '@/components/slideshow/types';
+import { frontendConfig } from '@/config';
 import { demoMediaUrl } from '@/demo/media';
 import { getMediaType } from '@/utils/mediaType';
+import { isMorphSupported, runMorph } from '@/utils/morph';
+import { calculateDimensions, composeSlide, createBlurredBackground } from '@/utils/slideCompose';
 
-/**
- * Constants for animation and styling
- */
-const ANIMATION_CONFIG = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0 },
-  transition: { duration: 0.5 }
-};
-
-const BLUR_AMOUNT = '20px';
 const MEDIA_PATH = '/media';
 
 /**
@@ -37,7 +35,8 @@ const getMediaUrl = (name: string): string => {
  * @param {Object} props.media - Media object containing image details
  * @param {'image'|'gif'} props.mediaType - Type of image media
  */
-const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ media, onEnded }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ media, onEnded, fade }) => {
+  const variants = useMemo(() => fadeVariants(fade, configuredTransitionDuration()), [fade]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const onEndedRef = useRef(onEnded);
   onEndedRef.current = onEnded;
@@ -59,7 +58,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ media, onEnded }) 
 
   return (
     <motion.video
-      {...ANIMATION_CONFIG}
+      initial={variants.initial}
+      animate={variants.animate}
+      exit={variants.exit}
       key={`${media.name}-video`}
       ref={videoRef}
       className="w-full h-full object-contain"
@@ -81,88 +82,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ media, onEnded }) 
  * @param {Object} props.media - Media object containing image details
  * @param {'image'|'gif'} props.mediaType - Type of image media
  */
-const ImageCanvas: React.FC<ImageCanvasProps> = React.memo(({ media, mediaType }) => {
+const ImageCanvas: React.FC<ImageCanvasProps> = React.memo(({ media, mediaType, fade, onReady }) => {
+  const variants = useMemo(() => fadeVariants(fade, configuredTransitionDuration()), [fade]);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [dimensions, setDimensions] = useState<Dimensions | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const resizeTimeoutRef = useRef<number | null>(null);
-
-  /**
- * Calculates scaled dimensions maintaining aspect ratio
- * @param {number} mediaWidth - Original media width
- * @param {number} mediaHeight - Original media height
- * @param {number} canvasWidth - Canvas width
- * @param {number} canvasHeight - Canvas height
- * @returns {Object} Scaled dimensions and position
- */
-  const calculateDimensions = useCallback((
-    mediaWidth: number,
-    mediaHeight: number,
-    canvasWidth: number,
-    canvasHeight: number
-  ): Dimensions => {
-    const scale = Math.min(
-      canvasWidth / mediaWidth,
-      canvasHeight / mediaHeight
-    );
-
-    return {
-      scaledWidth: mediaWidth * scale,
-      scaledHeight: mediaHeight * scale,
-      x: (canvasWidth - mediaWidth * scale) / 2,
-      y: (canvasHeight - mediaHeight * scale) / 2
-    };
-  }, []);
-
-  /**
- * Creates blurred background effect using canvas
- * @param {HTMLImageElement} image - Source image element
- * @param {Object} dimensions - Calculated dimensions
- * @param {number} canvasWidth - Canvas width
- * @param {number} canvasHeight - Canvas height
- * @returns {HTMLCanvasElement} Canvas with blurred background
- */
-  const createBlurredBackground = useCallback((
-    image: HTMLImageElement,
-    dimensions: Dimensions,
-    canvasWidth: number,
-    canvasHeight: number
-  ): HTMLCanvasElement => {
-    const { scaledWidth, scaledHeight, x, y } = dimensions;
-    const { width: imgWidth, height: imgHeight } = image;
-
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d');
-
-    if (!tempCtx) throw new Error('Failed to get canvas context');
-
-    tempCanvas.width = canvasWidth;
-    tempCanvas.height = canvasHeight;
-
-    // Draw main image
-    tempCtx.imageSmoothingQuality = 'medium';
-    tempCtx.drawImage(image, x, y, scaledWidth, scaledHeight);
-    tempCtx.filter = `blur(${BLUR_AMOUNT})`;
-
-    // Draw edges for blur effect
-    const edges = [
-      { sx: 0, sy: 0, sw: 1, sh: imgHeight, dx: 0, dy: 0, dw: x, dh: canvasHeight },
-      { sx: imgWidth - 1, sy: 0, sw: 1, sh: imgHeight, dx: x + scaledWidth, dy: 0, dw: canvasWidth - (x + scaledWidth), dh: canvasHeight },
-      { sx: 0, sy: 0, sw: imgWidth, sh: 1, dx: x, dy: 0, dw: scaledWidth, dh: y },
-      { sx: 0, sy: imgHeight - 1, sw: imgWidth, sh: 1, dx: x, dy: y + scaledHeight, dw: scaledWidth, dh: canvasHeight - (y + scaledHeight) }
-    ];
-
-    edges.forEach(edge => {
-      tempCtx.drawImage(image, edge.sx, edge.sy, edge.sw, edge.sh, edge.dx, edge.dy, edge.dw, edge.dh);
-    });
-
-    // Add darkness overlay
-    tempCtx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-    tempCtx.fillRect(0, 0, canvasWidth + 50, canvasHeight + 50);
-
-    return tempCanvas;
-  }, []);
 
   /**
  * Updates canvas with current image and blur effect
@@ -217,7 +145,8 @@ const ImageCanvas: React.FC<ImageCanvasProps> = React.memo(({ media, mediaType }
 
     setDimensions(dims);
     setIsLoading(false);
-  }, [mediaType, calculateDimensions, createBlurredBackground]);
+    onReadyRef.current?.();
+  }, [mediaType]);
 
   /**
  * Handles window resize events with debouncing
@@ -266,7 +195,10 @@ const ImageCanvas: React.FC<ImageCanvasProps> = React.memo(({ media, mediaType }
     <motion.div
       className="fixed inset-0 bg-transparent"
       key={`${media.name}-image`}
-      {...ANIMATION_CONFIG}
+      initial={variants.initial}
+      // The fade starts once the picture is drawn, so a slide never fades in blank
+      animate={isLoading ? variants.initial : variants.animate}
+      exit={variants.exit}
     >
       <canvas ref={canvasRef} className="absolute inset-0 z-0" />
       {mediaType === 'gif' && dimensions && !isLoading && (
@@ -289,33 +221,177 @@ const ImageCanvas: React.FC<ImageCanvasProps> = React.memo(({ media, mediaType }
   );
 });
 
+/** Loads an image into the browser cache; resolves with null if it cannot be loaded */
+const loadImage = (name: string): Promise<HTMLImageElement | null> =>
+  new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.src = getMediaUrl(name);
+  });
+
+const morphStrength = 0.9;
+
+interface MorphLayerProps {
+  from: MediaItem;
+  to: MediaItem;
+  soft: number;
+  onDone: () => void;
+}
+
 /**
- * Main media canvas component that renders either video or image
+ * Draws the morph between two images on top of the slideshow. When it ends it keeps
+ * showing the last frame (exactly the new slide) until the layer is removed.
+ */
+const MorphLayer: React.FC<MorphLayerProps> = ({ from, to, soft, onDone }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
+
+  useEffect(() => {
+    let cancelled = false;
+    let stop: (() => void) | null = null;
+
+    void Promise.all([loadImage(from.name), loadImage(to.name)]).then(([a, b]) => {
+      const canvas = canvasRef.current;
+      if (cancelled || !canvas) return;
+      if (!a || !b) {
+        onDoneRef.current();
+        return;
+      }
+
+      // Same pixel size the still slide is drawn at, capped to keep slow devices smooth
+      const width = Math.min(Math.round(window.innerWidth * (window.devicePixelRatio || 1)), 1920);
+      const height = Math.round((width * window.innerHeight) / window.innerWidth);
+      canvas.width = width;
+      canvas.height = height;
+
+      stop = runMorph(canvas, composeSlide(a, width, height), composeSlide(b, width, height), {
+        duration: configuredTransitionDuration() * 1.15,
+        strength: morphStrength,
+        soft,
+        onDone: () => onDoneRef.current(),
+      });
+      if (!stop) onDoneRef.current();
+    });
+
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, [from, to, soft]);
+
+  return <canvas ref={canvasRef} className="fixed inset-0 z-20 w-full h-full" />;
+};
+
+
+interface Shown {
+  item: MediaItem;
+  fade: FadeStyle;
+}
+
+/**
+ * Main media canvas component that renders either video or image.
+ * The next image is loaded before the change starts, and the slide that leaves stays solid
+ * underneath the one that comes in, so the screen never goes dark between slides.
  * @component
  * @param {Object} props
  * @param {Object} props.media - Media object to render
  * @param {string} props.media.id - Unique identifier
  * @param {string} props.media.name - Filename of media
  * @param {string} props.media.url - URL of media resource
+ * @param {string} [props.transition] - Overrides `slideshow.transition` (used by the /test page)
  */
-const MediaCanvas: React.FC<MediaCanvasProps> = React.memo(({ media, onVideoEnd }) => {
-  // Memoize media type calculation
-  const mediaType = useMemo(() =>
-    media?.name ? getMediaType(media.name) : 'image',
-    [media?.name]
+const MediaCanvas: React.FC<MediaCanvasProps> = React.memo(({ media, onVideoEnd, transition }) => {
+  const kind = transition ?? configuredTransition();
+  const isMorph = kind === 'morph' || kind === 'morphBlur';
+
+  const [shown, setShown] = useState<Shown | null>(media ? { item: media, fade: fadeStyleOf(kind) } : null);
+  const [morph, setMorph] = useState<{ from: MediaItem; to: MediaItem } | null>(null);
+  const shownRef = useRef<MediaItem | null>(media);
+  const targetRef = useRef<MediaItem | null>(media);
+
+  useEffect(() => {
+    if (!media) return undefined;
+    const target = targetRef.current;
+    if (target && target.id === media.id && target.name === media.name) return undefined;
+    targetRef.current = media;
+
+    let cancelled = false;
+    const previous = shownRef.current;
+
+    const show = (fade: FadeStyle) => {
+      shownRef.current = media;
+      setShown({ item: media, fade });
+    };
+
+    if (getMediaType(media.name) === 'video') {
+      setMorph(null);
+      show(fadeStyleOf(kind));
+      return () => { cancelled = true; };
+    }
+
+    void loadImage(media.name).then(() => {
+      if (cancelled) return;
+      const canMorph = isMorph && isMorphSupported() && previous && !shownIsNotStill(previous) && getMediaType(media.name) === 'image';
+      if (canMorph && previous) {
+        // The old slide stays on screen while the morph plays; the new one is swapped in at the end
+        setMorph({ from: previous, to: media });
+      } else {
+        setMorph(null);
+        show(fadeStyleOf(kind));
+      }
+    });
+
+    return () => { cancelled = true; };
+     
+  }, [media?.id, media?.name]);
+
+  const handleMorphDone = useCallback((to: MediaItem) => {
+    if (targetRef.current?.id !== to.id) return;
+    shownRef.current = to;
+    setShown({ item: to, fade: 'instant' });
+  }, []);
+
+  // The morph layer is removed once the new slide is drawn underneath it
+  const handleReady = useCallback(() => {
+    setMorph((current) => (current && shownRef.current?.id === current.to.id ? null : current));
+  }, []);
+
+  const mediaType = useMemo(
+    () => (shown?.item.name ? getMediaType(shown.item.name) : 'image'),
+    [shown?.item.name]
   );
 
-  if (!media) return null;
+  if (!media || !shown) return null;
+  const item = shown.item;
 
   return (
-    <AnimatePresence mode="sync">
-      {mediaType === 'video' ? (
-        // Give a unique key so that on change the exit/enter transitions run
-        <VideoPlayer media={media} onEnded={onVideoEnd} key={`video-${media.id || media.name}`} />
-      ) : (
-        <ImageCanvas media={media} mediaType={mediaType} key={`image-${media.id || media.name}`} />
+    <>
+      <AnimatePresence mode="sync">
+        {mediaType === 'video' ? (
+          // Give a unique key so that on change the exit/enter transitions run
+          <VideoPlayer media={item} onEnded={onVideoEnd} fade={shown.fade} key={`video-${item.id || item.name}`} />
+        ) : (
+          <ImageCanvas
+            media={item}
+            mediaType={mediaType}
+            fade={shown.fade}
+            onReady={handleReady}
+            key={`image-${item.id || item.name}`}
+          />
+        )}
+      </AnimatePresence>
+      {morph && (
+        <MorphLayer
+          key={`${morph.from.id}>${morph.to.id}`}
+          from={morph.from}
+          to={morph.to}
+          soft={kind === 'morphBlur' ? 1 : 0}
+          onDone={() => handleMorphDone(morph.to)}
+        />
       )}
-    </AnimatePresence>
+    </>
   );
 },
   // Custom comparison function
@@ -324,9 +400,15 @@ const MediaCanvas: React.FC<MediaCanvasProps> = React.memo(({ media, onVideoEnd 
       prevProps.media?.id === nextProps.media?.id &&
       prevProps.media?.name === nextProps.media?.name &&
       prevProps.media?.url === nextProps.media?.url &&
-      prevProps.onVideoEnd === nextProps.onVideoEnd
+      prevProps.onVideoEnd === nextProps.onVideoEnd &&
+      prevProps.transition === nextProps.transition
     );
   });
+
+/** Only still images morph; videos and GIFs keep moving, so they fade instead */
+function shownIsNotStill(item: MediaItem): boolean {
+  return getMediaType(item.name) !== 'image';
+}
 
 // PropTypes for type checking
 MediaCanvas.propTypes = {
@@ -334,7 +416,8 @@ MediaCanvas.propTypes = {
     id: PropTypes.string,
     name: PropTypes.string,
     url: PropTypes.string
-  })
+  }),
+  transition: PropTypes.oneOf(['crossfade', 'blur', 'zoom', 'morph', 'morphBlur'])
 };
 
 export default MediaCanvas;

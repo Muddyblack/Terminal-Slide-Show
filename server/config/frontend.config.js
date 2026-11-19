@@ -24,6 +24,8 @@ export const frontendConfig = {
         watchInterval: 1000, // Interval for watching media files in downloadPath in milliseconds
         defaultSlideDuration: 10000, // Default slide duration in milliseconds
         controlsInterval: 3000, // Interval for showing/hiding controls in milliseconds
+        transition: 'crossfade', // How slides change: 'crossfade', 'morph' (images melt into each other, needs WebGL), 'morphBlur', 'blur' or 'zoom'
+        transitionDuration: 1000, // Milliseconds a slide change takes
     },
     polling: {
         serverStatusInterval: 1000, // Interval for polling server status in milliseconds

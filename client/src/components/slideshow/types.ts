@@ -1,3 +1,5 @@
+import type { FadeStyle, TransitionKind } from '@/components/slideshow/transitions';
+
 export interface ControlsProps {
     show: boolean;
     onPrevious: () => Promise<void>;
@@ -33,14 +35,20 @@ export interface Dimensions {
 export interface VideoPlayerProps {
   media: MediaItem;
   onEnded?: () => void;
+  fade: FadeStyle;
 }
 
 export interface ImageCanvasProps {
   media: MediaItem;
   mediaType: 'image' | 'gif' | 'video';
+  fade: FadeStyle;
+  /** Called once the picture has been drawn */
+  onReady?: () => void;
 }
 
 export interface MediaCanvasProps {
   media: MediaItem;
   onVideoEnd?: () => void;
+  /** Overrides `slideshow.transition` */
+  transition?: TransitionKind;
 }

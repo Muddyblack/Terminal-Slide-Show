@@ -30,6 +30,8 @@ declare module '@config/frontend.config' {
       watchInterval: number;
       defaultSlideDuration: number;
       controlsInterval: number;
+      transition: 'crossfade' | 'morph' | 'morphBlur' | 'blur' | 'zoom';
+      transitionDuration: number;
     };
     polling: { serverStatusInterval: number };
     schedule: {
