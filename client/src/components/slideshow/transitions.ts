@@ -36,38 +36,40 @@ export const fadeStyleOf = (kind: TransitionKind): FadeStyle => (kind === 'blur'
 
 /**
  * Animation of a slide that comes in (initial, animate) and one that leaves (exit).
- * The slide that leaves never gets more transparent than 99%, so the new slide always
- * fades in over a solid picture and the black background never shows through.
+ *
+ * The slide that leaves stays (almost) solid underneath and is only removed well after the
+ * new one is fully in, so the black background never shows through. Its exit runs longer
+ * than the fade because the new slide may need a moment to draw before its fade starts.
+ * Opacity goes to 0.99 rather than staying at 1 because an exit that changes nothing ends at once.
  */
 export const fadeVariants = (style: FadeStyle, durationMs: number) => {
-  const transition = { duration: durationMs / 1000, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] };
+  const ease = [0.4, 0, 0.2, 1] as [number, number, number, number];
+  const transition = { duration: durationMs / 1000, ease };
+  const exitTransition = { duration: (durationMs + 800) / 1000, ease };
   const shown = { opacity: 1, scale: 1, filter: 'blur(0px)' };
-  const holding = { opacity: 0.99, scale: 1, filter: 'blur(0px)' };
+  const holding = { opacity: 0.99, scale: 1, filter: 'blur(0px)', transition: exitTransition };
 
   switch (style) {
     case 'blur':
       return {
         initial: { ...shown, opacity: 0, filter: 'blur(18px)' },
         animate: { ...shown, transition },
-        exit: { ...holding, filter: 'blur(6px)', transition },
+        exit: { ...holding, filter: 'blur(6px)' },
       };
     case 'zoom':
       return {
         initial: { ...shown, opacity: 0, scale: 1.12 },
         animate: { ...shown, transition },
-        exit: { ...holding, scale: 0.97, transition },
+        exit: { ...holding, scale: 0.97 },
       };
     case 'instant':
-      return {
-        initial: shown,
-        animate: shown,
-        exit: { ...shown, transition: { duration: 0 } },
-      };
+      // Shown straight away (after a morph); it still leaves like any other slide
+      return { initial: shown, animate: shown, exit: holding };
     default:
       return {
         initial: { ...shown, opacity: 0 },
         animate: { ...shown, transition },
-        exit: { ...holding, transition },
+        exit: holding,
       };
   }
 };

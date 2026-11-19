@@ -29,15 +29,17 @@ const getMediaUrl = (name: string): string => {
 };
 
 /**
- * Canvas-based image renderer with blur effect background
+ * Video player that fades in over the previous slide
  * @component
  * @param {Object} props
- * @param {Object} props.media - Media object containing image details
- * @param {'image'|'gif'} props.mediaType - Type of image media
+ * @param {Object} props.media - Media object containing video details
+ * @param {Function} [props.onEnded] - Called when the video ends or fails
  */
 const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ media, onEnded, fade }) => {
   const variants = useMemo(() => fadeVariants(fade, configuredTransitionDuration()), [fade]);
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Like images, a video only fades in once it has a picture to show
+  const [hasFrame, setHasFrame] = useState(false);
   const onEndedRef = useRef(onEnded);
   onEndedRef.current = onEnded;
 
@@ -59,7 +61,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ media, onEnded, fa
   return (
     <motion.video
       initial={variants.initial}
-      animate={variants.animate}
+      animate={hasFrame ? variants.animate : variants.initial}
       exit={variants.exit}
       key={`${media.name}-video`}
       ref={videoRef}
@@ -69,6 +71,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = React.memo(({ media, onEnded, fa
       autoPlay={frontendConfig.mediaTypes.autoplay}
       loop={frontendConfig.mediaTypes.loop}
       onEnded={handleVideoEnd}
+      onLoadedData={() => setHasFrame(true)}
       onError={() => onEndedRef.current?.()}
       src={getMediaUrl(media.name)}
     />
@@ -284,7 +287,6 @@ const MorphLayer: React.FC<MorphLayerProps> = ({ from, to, soft, onDone }) => {
   return <canvas ref={canvasRef} className="fixed inset-0 z-20 w-full h-full" />;
 };
 
-
 interface Shown {
   item: MediaItem;
   fade: FadeStyle;
@@ -331,10 +333,12 @@ const MediaCanvas: React.FC<MediaCanvasProps> = React.memo(({ media, onVideoEnd,
       return () => { cancelled = true; };
     }
 
-    void loadImage(media.name).then(() => {
+    void loadImage(media.name).then((image) => {
       if (cancelled) return;
-      const canMorph = isMorph && isMorphSupported() && previous && !shownIsNotStill(previous) && getMediaType(media.name) === 'image';
-      if (canMorph && previous) {
+      // Only still images morph; videos and GIFs keep moving, so they fade instead
+      const canMorph = isMorph && image && isMorphSupported() && previous
+        && getMediaType(previous.name) === 'image' && getMediaType(media.name) === 'image';
+      if (canMorph) {
         // The old slide stays on screen while the morph plays; the new one is swapped in at the end
         setMorph({ from: previous, to: media });
       } else {
@@ -344,13 +348,15 @@ const MediaCanvas: React.FC<MediaCanvasProps> = React.memo(({ media, onVideoEnd,
     });
 
     return () => { cancelled = true; };
-     
+    // Runs only when the slide changes; `kind` is read fresh on each run
   }, [media?.id, media?.name]);
 
   const handleMorphDone = useCallback((to: MediaItem) => {
     if (targetRef.current?.id !== to.id) return;
     shownRef.current = to;
     setShown({ item: to, fade: 'instant' });
+    // Normally the layer goes once the new slide reports it is drawn; this is the fallback
+    window.setTimeout(() => setMorph((current) => (current?.to.id === to.id ? null : current)), 3000);
   }, []);
 
   // The morph layer is removed once the new slide is drawn underneath it
@@ -404,11 +410,6 @@ const MediaCanvas: React.FC<MediaCanvasProps> = React.memo(({ media, onVideoEnd,
       prevProps.transition === nextProps.transition
     );
   });
-
-/** Only still images morph; videos and GIFs keep moving, so they fade instead */
-function shownIsNotStill(item: MediaItem): boolean {
-  return getMediaType(item.name) !== 'image';
-}
 
 // PropTypes for type checking
 MediaCanvas.propTypes = {

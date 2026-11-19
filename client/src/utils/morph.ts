@@ -27,7 +27,11 @@ void main() {
 }`;
 
 const FRAGMENT = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
+#else
+precision mediump float;
+#endif
 varying vec2 uv;
 uniform sampler2D A, B;
 uniform float t, k, soft;
@@ -75,7 +79,9 @@ let supported: boolean | null = null;
 export const isMorphSupported = (): boolean => {
   if (supported === null) {
     try {
-      supported = Boolean(document.createElement('canvas').getContext('webgl'));
+      const gl = document.createElement('canvas').getContext('webgl');
+      supported = Boolean(gl);
+      gl?.getExtension('WEBGL_lose_context')?.loseContext();
     } catch {
       supported = false;
     }
